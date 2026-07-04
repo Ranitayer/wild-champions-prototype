@@ -1,0 +1,15 @@
+[gd_scene format=3 uid="uid://re66x2rpxsrq"]
+
+[ext_resource type="PackedScene" path="res://game/cards/card_template.tscn" id="1_ig7tw"]
+[ext_resource type="Resource" uid="uid://5xjbvisxffvp" path="res://content/cards/card_template_data.tres" id="2_data"]
+
+[node name="Main" type="Node2D" unique_id=509628755]
+
+[node name="CardTemplate" parent="." unique_id=22736817 instance=ExtResource("1_ig7tw")]
+offset_left = 839.0
+offset_top = 274.0
+offset_right = 1026.0
+offset_bottom = 536.0
+card_data = ExtResource("2_data")
+card_size = Vector2(200, 275)
+hover_scale = 1.4
