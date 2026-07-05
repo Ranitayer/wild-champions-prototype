@@ -50,7 +50,7 @@ Cards are the primary strategic building blocks. Their exact role is TBD: they m
 - Cards use slightly rounded corners.
 - Cards enlarge and lift on hover, provide movement feedback while dragged, and snap into arena slots.
 - Cards have Common, Uncommon, Rare, Epic, and Mythic rarities with distinct top and bottom colors.
-- Cards have three merge tiers. Tier 1 is the default; tiers 2 and 3 are unlocked through merging. Merge behavior is not yet implemented.
+- Cards have three merge tiers. Two identical cards of the same tier merge into the next tier, up to Tier 3. Tiers currently change only the tier indicator.
 - Card data is stored as Resources containing title, description, art, rarity, attack, health, and cooldown.
 - Permanent Attack changes update the main Attack stat. Limited-duration Attack changes use a separate temporary Attack stat and expire after their configured attack uses.
 - Traits are reusable valued card abilities, can be acquired during play, and appear in `#de9e41` text. Traits normally cap at 5 unless their rule explicitly allows unlimited levels.
@@ -117,7 +117,7 @@ The first playable target should prove one complete loop: configure a legal setu
 
 ## Change Log
 
-- 2026-07-05: Added three card tiers and Tier 1 card indicators; merging remains unimplemented.
+- 2026-07-05: Added same-card, same-tier merging through Tier 3 with card-slam feedback.
 - 2026-07-05: Added unlimited Poison levels, post-attack poison damage, and Peedie.
 - 2026-07-05: Added one-time Survivalist death prevention and Seraphina.
 - 2026-07-05: Added deterministic miss rolls, Flying, and Batteroo.

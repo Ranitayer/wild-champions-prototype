@@ -5,6 +5,7 @@
 [ext_resource type="FontFile" uid="uid://g1ho36qv3g0r" path="res://assets/fonts/cardfont.ttf" id="3_font"]
 [ext_resource type="Shader" uid="uid://cvf421j5fgtfo" path="res://game/cards/shaders/card_hit_flash.gdshader" id="4_hit_flash"]
 [ext_resource type="Script" uid="uid://dqipmhmchkyr7" path="res://game/cards/card_tier_indicator.gd" id="5_tier"]
+[ext_resource type="Script" uid="uid://1om5wqmq6lhe" path="res://game/cards/card_merge_animator.gd" id="6_merge"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_hit_flash"]
 resource_local_to_scene = true
@@ -56,6 +57,14 @@ offset_bottom = 275.0
 mouse_filter = 2
 mouse_default_cursor_shape = 2
 script = ExtResource("1_visual")
+
+[node name="MergeAnimator" type="Node" parent="." unique_id=1616176363]
+unique_name_in_owner = true
+script = ExtResource("6_merge")
+anticipation_duration = 0.2
+slam_height = 80.0
+slam_duration = 0.12
+squash_amount = 0.1
 
 [node name="VisualGroup" type="CanvasGroup" parent="." unique_id=969857210]
 unique_name_in_owner = true

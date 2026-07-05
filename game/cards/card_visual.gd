@@ -3,6 +3,7 @@ extends Control
 
 signal drag_started(card: CardVisual)
 signal stat_changed(card: CardVisual, stat_type: CardStat.Type, delta: int)
+signal tier_changed(card: CardVisual, tier: int)
 
 const OUTLINE_WIDTH := 4
 const DARK_COLOR := Color("151d28")
@@ -94,6 +95,7 @@ var temporary_attack_stat_scale := 0.9
 var temporary_attack_stat_margin := 4.0
 
 @onready var card_surface: Panel = %CardSurface
+@onready var merge_animator: CardMergeAnimator = %MergeAnimator
 @onready var visual_group: CanvasGroup = %VisualGroup
 @onready var rarity_top: Panel = %RarityTop
 @onready var rarity_bottom: Panel = %RarityBottom
@@ -131,6 +133,7 @@ var _description_plain_text := ""
 var _trait_tooltip
 var _trait_tooltip_layer: CanvasLayer
 var _base_tooltip_sections: Array[Dictionary] = []
+var _card_tier := 1
 
 static var _last_hover_z_index := 0
 
@@ -330,7 +333,8 @@ func _apply_data() -> void:
 	title_label.text = data.title
 	_apply_description(data)
 	art_texture.texture = data.art
-	tier_indicator.tier = data.tier
+	_card_tier = clampi(data.tier, 1, CardData.MAX_TIER)
+	tier_indicator.tier = _card_tier
 	attack_stat.value = data.attack
 	health_stat.value = data.health
 	cooldown_stat.value = data.cooldown
@@ -419,6 +423,51 @@ func _update_trait_tooltip_visibility() -> void:
 
 func get_card_center() -> Vector2:
 	return global_position + card_size * 0.5
+
+
+func get_card_tier() -> int:
+	return _card_tier
+
+
+func set_card_tier(value: int) -> void:
+	var next_tier := clampi(value, 1, CardData.MAX_TIER)
+	if next_tier == _card_tier:
+		return
+	_card_tier = next_tier
+	tier_indicator.tier = _card_tier
+	tier_changed.emit(self, _card_tier)
+
+
+func can_merge_with(other: CardVisual) -> bool:
+	if not is_instance_valid(other) or other == self:
+		return false
+	if _card_tier != other._card_tier or _card_tier >= CardData.MAX_TIER:
+		return false
+	if not card_data or not other.card_data:
+		return false
+	if card_data == other.card_data:
+		return true
+	return not card_data.resource_path.is_empty() and card_data.resource_path == other.card_data.resource_path
+
+
+func prepare_for_merge() -> void:
+	_stop_tweens()
+	_hovered = false
+	_dragging = false
+	_snapping = true
+	set_interaction_blocked(true)
+	if _trait_tooltip:
+		_trait_tooltip.hide()
+
+
+func finish_merge(resting_z: int) -> void:
+	_snapping = false
+	_resting_z_index = resting_z
+	z_index = resting_z
+	card_surface.position = Vector2.ZERO
+	card_surface.scale = Vector2.ONE
+	card_surface.rotation_degrees = 0.0
+	set_interaction_blocked(false)
 
 
 func get_card_effect_parent() -> Control:
@@ -841,6 +890,10 @@ func _stop_drag() -> void:
 	_dragging = false
 	_drag_tilt_target = 0.0
 	_stop_tweens()
+	var merge_target := _find_merge_target()
+	if merge_target:
+		merge_target.merge_animator.play(self, merge_target)
+		return
 	var target_slot := _find_drop_slot()
 	var snapped_to_slot := target_slot != null
 	if snapped_to_slot:
@@ -877,6 +930,22 @@ func _find_drop_slot() -> CardSlot:
 		if slot and slot.can_accept(self):
 			return slot
 	return null
+
+
+func _find_merge_target() -> CardVisual:
+	var target: CardVisual = null
+	var card_center := get_card_center()
+	for node in get_tree().get_nodes_in_group("card_visuals"):
+		var candidate := node as CardVisual
+		if not candidate or not can_merge_with(candidate):
+			continue
+		if candidate._interaction_blocked or candidate._dragging or candidate._snapping:
+			continue
+		if not candidate.is_visible_in_tree() or not candidate.get_global_rect().has_point(card_center):
+			continue
+		if not target or candidate.z_index > target.z_index:
+			target = candidate
+	return target
 
 
 func _on_snap_finished() -> void:
