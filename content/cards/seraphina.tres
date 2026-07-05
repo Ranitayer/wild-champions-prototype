@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="CardData" format=3 uid="uid://dkkur0i2papdp"]
+
+[ext_resource type="Script" uid="uid://dsht6jxxa5f8m" path="res://game/cards/card_data.gd" id="1_data"]
+[ext_resource type="Texture2D" uid="uid://b16tbkonblbpc" path="res://assets/art/cards/seraphina.png" id="2_art"]
+[ext_resource type="Script" uid="uid://b551vbw3ovtvi" path="res://game/cards/traits/poison_trait.gd" id="3_poison"]
+[ext_resource type="Script" uid="uid://boo1tovmjm1uu" path="res://game/cards/traits/survivalist_trait.gd" id="4_survivalist"]
+
+[sub_resource type="Resource" id="Poison_seraphina"]
+script = ExtResource("3_poison")
+value = 2
+
+[sub_resource type="Resource" id="Survivalist_seraphina"]
+script = ExtResource("4_survivalist")
+
+[resource]
+script = ExtResource("1_data")
+title = "SERAPHINA"
+description = ""
+art = ExtResource("2_art")
+art_scale = 1.5
+art_offset = Vector2(0, 15)
+rarity = 2
+attack = 2
+health = 3
+cooldown = 2
+traits = Array[Resource]([SubResource("Poison_seraphina"), SubResource("Survivalist_seraphina")])

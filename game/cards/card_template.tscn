@@ -1,8 +1,17 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene format=3 uid="uid://c5rgc7knp5jb8"]
 
-[ext_resource type="Script" path="res://game/cards/card_visual.gd" id="1_visual"]
+[ext_resource type="Script" uid="uid://c4as2gk18787x" path="res://game/cards/card_visual.gd" id="1_visual"]
 [ext_resource type="PackedScene" path="res://game/cards/stat_circle.tscn" id="2_stat"]
-[ext_resource type="FontFile" path="res://assets/fonts/cardfont.ttf" id="3_font"]
+[ext_resource type="FontFile" uid="uid://g1ho36qv3g0r" path="res://assets/fonts/cardfont.ttf" id="3_font"]
+[ext_resource type="Shader" uid="uid://cvf421j5fgtfo" path="res://game/cards/shaders/card_hit_flash.gdshader" id="4_hit_flash"]
+[ext_resource type="Script" uid="uid://dqipmhmchkyr7" path="res://game/cards/card_tier_indicator.gd" id="5_tier"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_hit_flash"]
+resource_local_to_scene = true
+shader = ExtResource("4_hit_flash")
+shader_parameter/flash_color = Color(1, 1, 1, 1)
+shader_parameter/flash_strength = 0.0
+shader_parameter/outline_width = 4.0
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_card"]
 bg_color = Color(0.921569, 0.929412, 0.913725, 1)
@@ -16,6 +25,16 @@ corner_radius_top_right = 9
 corner_radius_bottom_right = 9
 corner_radius_bottom_left = 9
 
+[sub_resource type="StyleBoxFlat" id="StyleBox_rarity_top"]
+bg_color = Color(0.658824, 0.709804, 0.698039, 1)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_rarity_bottom"]
+bg_color = Color(0.223529, 0.290196, 0.313726, 1)
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
 [sub_resource type="StyleBoxFlat" id="StyleBox_title"]
 bg_color = Color(0.921569, 0.929412, 0.913725, 1)
 border_width_left = 4
@@ -28,34 +47,27 @@ corner_radius_top_right = 6
 corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
 
-[sub_resource type="StyleBoxFlat" id="StyleBox_rarity_top"]
-bg_color = Color(0.658824, 0.709804, 0.698039, 1)
-corner_radius_top_left = 5
-corner_radius_top_right = 5
-
-[sub_resource type="StyleBoxFlat" id="StyleBox_rarity_bottom"]
-bg_color = Color(0.223529, 0.290196, 0.313726, 1)
-corner_radius_bottom_right = 5
-corner_radius_bottom_left = 5
-
-[node name="CardTemplate" type="Control"]
-custom_minimum_size = Vector2(187, 262)
+[node name="CardTemplate" type="Control" unique_id=1836562310]
+custom_minimum_size = Vector2(200, 275)
 layout_mode = 3
 anchors_preset = 0
-offset_right = 187.0
-offset_bottom = 262.0
+offset_right = 200.0
+offset_bottom = 275.0
+mouse_filter = 2
 mouse_default_cursor_shape = 2
 script = ExtResource("1_visual")
 
-[node name="CardSurface" type="Panel" parent="."]
+[node name="VisualGroup" type="CanvasGroup" parent="." unique_id=969857210]
 unique_name_in_owner = true
-layout_mode = 0
-offset_right = 187.0
-offset_bottom = 262.0
-mouse_filter = 2
+material = SubResource("ShaderMaterial_hit_flash")
+
+[node name="CardSurface" type="Panel" parent="VisualGroup" unique_id=2069607710]
+unique_name_in_owner = true
+offset_right = 200.0
+offset_bottom = 275.0
 theme_override_styles/panel = SubResource("StyleBox_card")
 
-[node name="RarityTop" type="Panel" parent="CardSurface"]
+[node name="RarityTop" type="Panel" parent="VisualGroup/CardSurface" unique_id=944290446]
 unique_name_in_owner = true
 layout_mode = 0
 offset_left = 4.0
@@ -65,7 +77,7 @@ offset_bottom = 141.0
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBox_rarity_top")
 
-[node name="RarityBottom" type="Panel" parent="CardSurface"]
+[node name="RarityBottom" type="Panel" parent="VisualGroup/CardSurface" unique_id=2074707878]
 unique_name_in_owner = true
 layout_mode = 0
 offset_left = 4.0
@@ -75,23 +87,46 @@ offset_bottom = 258.0
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBox_rarity_bottom")
 
-[node name="TitleBox" type="Panel" parent="CardSurface"]
+[node name="ArtTexture" type="TextureRect" parent="VisualGroup/CardSurface" unique_id=1672575452]
+unique_name_in_owner = true
+texture_filter = 4
+layout_mode = 0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 179.0
+offset_bottom = 108.0
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="TierIndicator" type="Control" parent="VisualGroup/CardSurface" unique_id=2084136933]
+unique_name_in_owner = true
+anchors_preset = 0
+offset_left = 176.0
+offset_top = 12.0
+offset_right = 188.0
+offset_bottom = 64.0
+mouse_filter = 2
+script = ExtResource("5_tier")
+top_margin = 12.0
+right_margin = 12.0
+circle_gap = 8.0
+
+[node name="TitleBox" type="Panel" parent="VisualGroup/CardSurface" unique_id=315081178]
 unique_name_in_owner = true
 layout_mode = 0
 offset_left = -10.0
 offset_top = 116.0
 offset_right = 197.0
 offset_bottom = 166.0
-mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBox_title")
 
-[node name="TitleLabel" type="Label" parent="CardSurface/TitleBox"]
+[node name="TitleLabel" type="Label" parent="VisualGroup/CardSurface/TitleBox" unique_id=847498797]
 unique_name_in_owner = true
 layout_mode = 0
 offset_left = 10.0
 offset_right = 197.0
 offset_bottom = 50.0
-mouse_filter = 2
 theme_override_colors/font_color = Color(0.0823529, 0.113725, 0.156863, 1)
 theme_override_fonts/font = ExtResource("3_font")
 theme_override_font_sizes/font_size = 20
@@ -100,7 +135,7 @@ horizontal_alignment = 1
 vertical_alignment = 1
 text_overrun_behavior = 3
 
-[node name="DescriptionLabel" type="Label" parent="CardSurface"]
+[node name="DescriptionLabel" type="RichTextLabel" parent="VisualGroup/CardSurface" unique_id=52864804]
 unique_name_in_owner = true
 layout_mode = 0
 offset_left = 12.0
@@ -108,36 +143,52 @@ offset_top = 176.0
 offset_right = 175.0
 offset_bottom = 234.0
 mouse_filter = 2
-theme_override_colors/font_color = Color(0.921569, 0.929412, 0.913725, 1)
-theme_override_fonts/font = ExtResource("3_font")
-theme_override_font_sizes/font_size = 18
-text = "Card description."
-horizontal_alignment = 1
-autowrap_mode = 3
+theme_override_colors/default_color = Color(0.921569, 0.929412, 0.913725, 1)
+theme_override_fonts/normal_font = ExtResource("3_font")
+theme_override_font_sizes/normal_font_size = 18
+bbcode_enabled = true
+text = "[center]Card description.[/center]"
+scroll_active = false
+vertical_alignment = 1
 
-[node name="AttackStat" parent="CardSurface" instance=ExtResource("2_stat")]
+[node name="AttackStat" parent="VisualGroup/CardSurface" unique_id=1278808339 instance=ExtResource("2_stat")]
 unique_name_in_owner = true
 layout_mode = 0
 offset_left = -10.0
 offset_top = 222.0
 offset_right = 45.0
 offset_bottom = 277.0
-fill_color = Color(0.309804, 0.560784, 0.729412, 1)
 
-[node name="HealthStat" parent="CardSurface" instance=ExtResource("2_stat")]
+[node name="TemporaryAttackStat" parent="VisualGroup/CardSurface" unique_id=22379735 instance=ExtResource("2_stat")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+offset_left = 49.0
+offset_top = 224.75
+offset_right = 98.5
+offset_bottom = 274.25
+
+[node name="HealthStat" parent="VisualGroup/CardSurface" unique_id=146814693 instance=ExtResource("2_stat")]
 unique_name_in_owner = true
 layout_mode = 0
 offset_left = 142.0
 offset_top = 222.0
 offset_right = 197.0
 offset_bottom = 277.0
-fill_color = Color(0.647059, 0.188235, 0.188235, 1)
 
-[node name="CooldownStat" parent="CardSurface" instance=ExtResource("2_stat")]
+[node name="PoisonStat" parent="VisualGroup/CardSurface" unique_id=1594245801 instance=ExtResource("2_stat")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+offset_left = 88.5
+offset_top = 224.75
+offset_right = 138.0
+offset_bottom = 274.25
+
+[node name="CooldownStat" parent="VisualGroup/CardSurface" unique_id=1968247685 instance=ExtResource("2_stat")]
 unique_name_in_owner = true
 layout_mode = 0
 offset_left = -12.0
 offset_top = -12.0
 offset_right = 43.0
 offset_bottom = 43.0
-fill_color = Color(0.0823529, 0.113725, 0.156863, 1)

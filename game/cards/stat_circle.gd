@@ -5,18 +5,15 @@ extends Control
 const OUTLINE_WIDTH := 4.0
 const LIGHT_COLOR := Color("ebede9")
 const DARK_COLOR := Color("151d28")
+const VALUE_FONT_SIZE := 22
 
-@export var fill_color: Color = Color("4f8fba"):
+var fill_color: Color = Color("4f8fba"):
 	set(value):
 		fill_color = value
 		queue_redraw()
-@export_range(0, 999, 1) var value: int = 0:
+var value: int = 0:
 	set(new_value):
 		value = new_value
-		_update_label()
-@export_range(8, 48, 1) var value_font_size: int = 22:
-	set(new_size):
-		value_font_size = new_size
 		_update_label()
 
 @onready var value_label: Label = %ValueLabel
@@ -43,4 +40,4 @@ func _update_label() -> void:
 	if not is_node_ready():
 		return
 	value_label.text = str(value)
-	value_label.add_theme_font_size_override("font_size", value_font_size)
+	value_label.add_theme_font_size_override("font_size", VALUE_FONT_SIZE)

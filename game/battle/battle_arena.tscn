@@ -1,0 +1,60 @@
+[gd_scene format=3 uid="uid://cduxec6m7v3uw"]
+
+[ext_resource type="Script" uid="uid://ddsl6sjh4kyp2" path="res://game/battle/battle_arena.gd" id="1_arena"]
+[ext_resource type="Script" uid="uid://7fyfaow6q0j7" path="res://game/battle/battle_combat.gd" id="2_combat"]
+[ext_resource type="Script" uid="uid://c3i2m7hp8bsay" path="res://game/battle/effects/battle_buff_effect.gd" id="3_buff"]
+[ext_resource type="Script" uid="uid://ck80686wamnvo" path="res://game/ui/stat_popup/stat_popup.gd" id="4_popup"]
+[ext_resource type="Script" uid="uid://cf0ha7lfgw2ny" path="res://game/battle/effects/battle_block_effect.gd" id="5_block"]
+[ext_resource type="Script" uid="uid://btkreavtayh3v" path="res://game/ui/effect_popup/effect_popup.gd" id="6_effect_popup"]
+
+[node name="BattleArena" type="Control" unique_id=1328102770]
+custom_minimum_size = Vector2(860, 710)
+layout_mode = 3
+anchors_preset = 0
+offset_right = 860.0
+offset_bottom = 710.0
+mouse_filter = 2
+script = ExtResource("1_arena")
+
+[node name="TopSlots" type="HBoxContainer" parent="." unique_id=2132540216]
+unique_name_in_owner = true
+layout_mode = 0
+offset_right = 860.0
+offset_bottom = 275.0
+mouse_filter = 2
+theme_override_constants/separation = 20
+
+[node name="BottomSlots" type="HBoxContainer" parent="." unique_id=1372617464]
+unique_name_in_owner = true
+layout_mode = 0
+offset_top = 435.0
+offset_right = 860.0
+offset_bottom = 710.0
+mouse_filter = 2
+theme_override_constants/separation = 20
+
+[node name="Combat" type="Node" parent="." unique_id=522744334]
+script = ExtResource("2_combat")
+
+[node name="EffectsLayer" type="CanvasLayer" parent="." unique_id=71617937]
+layer = 100
+
+[node name="BuffEffect" type="Node" parent="EffectsLayer" unique_id=1417864118]
+script = ExtResource("3_buff")
+travel_duration = 0.7
+arc_height = 280.0
+peak_slowdown = 4.0
+
+[node name="BlockEffect" type="Node" parent="EffectsLayer" unique_id=732962223]
+script = ExtResource("5_block")
+duration = 0.45
+
+[node name="UILayer" type="CanvasLayer" parent="." unique_id=764921261]
+layer = 101
+
+[node name="StatPopup" type="Node" parent="UILayer" unique_id=201342834]
+script = ExtResource("4_popup")
+font_size = 48
+
+[node name="EffectPopup" type="Node" parent="UILayer" unique_id=1160744893]
+script = ExtResource("6_effect_popup")

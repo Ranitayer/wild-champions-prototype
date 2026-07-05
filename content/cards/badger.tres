@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="CardData" format=3 uid="uid://uymu5ejgioc4"]
+
+[ext_resource type="Script" uid="uid://dsht6jxxa5f8m" path="res://game/cards/card_data.gd" id="1_data"]
+[ext_resource type="Texture2D" uid="uid://blyjrt0f2wx1j" path="res://assets/art/cards/badger.png" id="2_art"]
+[ext_resource type="Script" uid="uid://ba50mbukrgl8w" path="res://game/cards/traits/tough_trait.gd" id="3_tough"]
+
+[sub_resource type="Resource" id="Tough_badger"]
+script = ExtResource("3_tough")
+
+[resource]
+script = ExtResource("1_data")
+title = "BADGER"
+description = ""
+art = ExtResource("2_art")
+art_scale = 1.2000000000000002
+art_offset = Vector2(0, 5)
+attack = 1
+health = 3
+cooldown = 2
+traits = Array[Resource]([SubResource("Tough_badger")])

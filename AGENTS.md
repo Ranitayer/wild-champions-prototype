@@ -10,6 +10,8 @@ These rules apply to every agent working in this repository.
 - Build every feature as a modular, reusable component with clear ownership, purposeful configuration, and minimal coupling. Keep it easy to understand, modify, and reuse.
 - Use 4-pixel outlines everywhere an outline is present.
 - Use `#ebede9` for white/light UI color and `#151d28` for black/dark UI color everywhere.
+- Use `#ffa500` for orange feedback and accent color.
+- Use `#de9e41` for trait text.
 - Prefer small, direct changes. Do not add speculative systems, abstractions, dependencies, or folders.
 - Keep scenes, code, and data for a feature together under `game/` when implementation begins.
 - Keep authored card and champion definitions under `content/`; keep reusable media under `assets/`.

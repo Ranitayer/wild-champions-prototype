@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="CardCatalog" format=3 uid="uid://bkvndfyes17j8"]
+
+[ext_resource type="Script" uid="uid://xrmd8hk02dby" path="res://game/cards/card_catalog.gd" id="1_catalog"]
+[ext_resource type="Resource" uid="uid://dbqt2vfhblcux" path="res://content/cards/stageroo.tres" id="3_stageroo"]
+[ext_resource type="Resource" uid="uid://uymu5ejgioc4" path="res://content/cards/badger.tres" id="4_badger"]
+[ext_resource type="Resource" uid="uid://f6t6lio31wje" path="res://content/cards/warwick.tres" id="5_warwick"]
+[ext_resource type="Resource" uid="uid://d1u1v1q86cxi" path="res://content/cards/peedie.tres" id="6_peedie"]
+[ext_resource type="Resource" uid="uid://dkkur0i2papdp" path="res://content/cards/seraphina.tres" id="7_seraphina"]
+[ext_resource type="Resource" path="res://content/cards/batteroo.tres" id="8_batteroo"]
+[ext_resource type="Resource" path="res://content/cards/nimble.tres" id="9_nimble"]
+
+[resource]
+script = ExtResource("1_catalog")
+cards = Array[Resource]([ExtResource("3_stageroo"), ExtResource("4_badger"), ExtResource("5_warwick"), ExtResource("6_peedie"), ExtResource("7_seraphina"), ExtResource("8_batteroo"), ExtResource("9_nimble")])

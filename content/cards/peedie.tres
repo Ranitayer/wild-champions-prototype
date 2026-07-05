@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="CardData" format=3 uid="uid://d1u1v1q86cxi"]
+
+[ext_resource type="Script" uid="uid://dsht6jxxa5f8m" path="res://game/cards/card_data.gd" id="1_data"]
+[ext_resource type="Texture2D" uid="uid://bd0h5g1bnyg7s" path="res://assets/art/cards/peedie.png" id="2_art"]
+[ext_resource type="Script" uid="uid://b551vbw3ovtvi" path="res://game/cards/traits/poison_trait.gd" id="3_poison"]
+
+[sub_resource type="Resource" id="Poison_peedie"]
+script = ExtResource("3_poison")
+
+[resource]
+script = ExtResource("1_data")
+title = "PEEDIE"
+description = ""
+art = ExtResource("2_art")
+art_scale = 1.5
+art_offset = Vector2(0, 7)
+attack = 1
+health = 1
+cooldown = 2
+traits = Array[Resource]([SubResource("Poison_peedie")])

@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="CardData" format=3 uid="uid://dbqt2vfhblcux"]
+
+[ext_resource type="Script" uid="uid://dsht6jxxa5f8m" path="res://game/cards/card_data.gd" id="1_data"]
+[ext_resource type="Texture2D" uid="uid://b2lblxxx0f61o" path="res://assets/art/cards/stageroo.png" id="2_art"]
+[ext_resource type="Script" uid="uid://ble1ynxs4ugg4" path="res://game/cards/effects/adjacent_attack_buff_effect.gd" id="3_effect"]
+
+[sub_resource type="Resource" id="AdjacentAttackBuff_stageroo"]
+script = ExtResource("3_effect")
+
+[resource]
+script = ExtResource("1_data")
+title = "STAGEROO"
+description = "Start of combat: Adjacent cards get +1 Attack."
+art = ExtResource("2_art")
+rarity = 2
+attack = 4
+health = 4
+cooldown = 3
+effects = Array[Resource]([SubResource("AdjacentAttackBuff_stageroo")])
