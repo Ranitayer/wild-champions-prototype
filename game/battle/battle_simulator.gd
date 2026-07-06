@@ -9,8 +9,8 @@ const TEAM_PLAYER := 1
 var _rng := RandomNumberGenerator.new()
 
 
-func run(cards: Array[BattleCardState], battle_seed := 0) -> Array[Dictionary]:
-	var resolved_seed := battle_seed if battle_seed != 0 else _derive_seed(cards)
+func run(cards: Array[BattleCardState], battle_seed: int = 0) -> Array[Dictionary]:
+	var resolved_seed: int = battle_seed if battle_seed != 0 else _derive_seed(cards)
 	_rng.seed = resolved_seed
 	var events: Array[Dictionary] = [{"type": "combat_started", "seed": resolved_seed}]
 	_apply_start_of_combat_effects(cards, events)

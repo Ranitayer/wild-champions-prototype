@@ -46,9 +46,11 @@ var _reorganize_revision := 0
 var _button_tween: Tween
 var _reorganize_tween: Tween
 var _button_style: StyleBoxFlat
+var _choice_locked := false
 
 
 func _ready() -> void:
+	add_to_group("card_collections")
 	cards_panel.hide()
 	_layout_panel()
 	_configure_button()
@@ -114,6 +116,10 @@ func _connect_card(card: CardVisual) -> void:
 
 
 func _on_invalid_drop(card: CardVisual) -> void:
+	collect_card(card)
+
+
+func collect_card(card: CardVisual) -> void:
 	if not is_instance_valid(card) or not card.card_data:
 		return
 	var instance_id := card.get_instance_id()
@@ -132,6 +138,15 @@ func _on_invalid_drop(card: CardVisual) -> void:
 	if is_instance_valid(card):
 		card.queue_free()
 	_add_entry(data, tier)
+
+
+func set_choice_locked(locked: bool) -> void:
+	_choice_locked = locked
+	cards_button.disabled = locked
+	while locked and _panel_animating:
+		await get_tree().process_frame
+	if locked and cards_panel.visible:
+		await _close_panel()
 
 
 func _return_to_ghost(card: CardVisual, active_drag: Dictionary) -> void:
@@ -189,7 +204,7 @@ func _add_entry(data: CardData, tier: int) -> void:
 
 
 func _toggle_panel() -> void:
-	if _panel_animating:
+	if _choice_locked or _panel_animating:
 		return
 	if cards_panel.visible:
 		_close_panel()

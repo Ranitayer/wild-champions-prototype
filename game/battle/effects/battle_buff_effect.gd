@@ -32,6 +32,40 @@ func play_stat_to_stat(
 	await _play(card, card, target_stat, amount, card.get_stat_center(source_stat), source_stat)
 
 
+func play_ui_stat_to_stat(
+	source_stat: Control,
+	target_stat: Control,
+	amount: int,
+	fill_color: Color
+) -> void:
+	if not is_instance_valid(source_stat) or not is_instance_valid(target_stat):
+		return
+	var token: BuffToken = BuffToken.new()
+	token.size = target_stat.size
+	token.pivot_offset = token.size * 0.5
+	token.fill_color = fill_color
+	token.value = absi(amount)
+	get_parent().add_child(token)
+	var start: Vector2 = source_stat.get_global_transform_with_canvas() * (source_stat.size * 0.5)
+	token.global_position = start - token.size * 0.5
+	var tween: Tween = token.create_tween()
+	tween.tween_method(_move_ui_token.bind(token, start, target_stat), 0.0, 1.0, travel_duration)
+	await tween.finished
+	token.queue_free()
+
+
+func _move_ui_token(
+	raw_progress: float,
+	token: BuffToken,
+	start: Vector2,
+	target_stat: Control
+) -> void:
+	if not is_instance_valid(target_stat):
+		return
+	var finish: Vector2 = target_stat.get_global_transform_with_canvas() * (target_stat.size * 0.5)
+	_move_token(raw_progress, token, start, finish)
+
+
 func _play(
 	source: CardVisual,
 	target: CardVisual,

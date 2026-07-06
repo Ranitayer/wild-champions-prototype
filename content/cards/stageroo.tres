@@ -4,7 +4,7 @@
 [ext_resource type="Texture2D" uid="uid://b2lblxxx0f61o" path="res://assets/art/cards/stageroo.png" id="2_art"]
 [ext_resource type="Script" uid="uid://ble1ynxs4ugg4" path="res://game/cards/effects/adjacent_attack_buff_effect.gd" id="3_effect"]
 [ext_resource type="Script" uid="uid://buc18u4ppgb8o" path="res://game/cards/card_tier_override.gd" id="4_tier"]
-[ext_resource type="Script" path="res://game/cards/effects/all_allies_attack_buff_effect.gd" id="5_allies"]
+[ext_resource type="Script" uid="uid://dnofmgo5n82x3" path="res://game/cards/effects/all_allies_attack_buff_effect.gd" id="5_allies"]
 
 [sub_resource type="Resource" id="AdjacentAttackBuff_stageroo"]
 script = ExtResource("3_effect")

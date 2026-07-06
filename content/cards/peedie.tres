@@ -3,14 +3,10 @@
 [ext_resource type="Script" uid="uid://dsht6jxxa5f8m" path="res://game/cards/card_data.gd" id="1_data"]
 [ext_resource type="Texture2D" uid="uid://bd0h5g1bnyg7s" path="res://assets/art/cards/peedie.png" id="2_art"]
 [ext_resource type="Script" uid="uid://b551vbw3ovtvi" path="res://game/cards/traits/poison_trait.gd" id="3_poison"]
-[ext_resource type="Script" path="res://game/cards/card_tier_override.gd" id="4_tier"]
-
-[sub_resource type="Resource" id="Poison_peedie"]
-script = ExtResource("3_poison")
+[ext_resource type="Script" uid="uid://buc18u4ppgb8o" path="res://game/cards/card_tier_override.gd" id="4_tier"]
 
 [sub_resource type="Resource" id="Tier2_peedie"]
 script = ExtResource("4_tier")
-tier = 2
 attack = 2
 health = 2
 
@@ -25,6 +21,9 @@ attack = 2
 health = 4
 replace_traits = true
 traits = Array[Resource]([SubResource("Poison2_peedie")])
+
+[sub_resource type="Resource" id="Poison_peedie"]
+script = ExtResource("3_poison")
 
 [resource]
 script = ExtResource("1_data")

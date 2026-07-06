@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="BoosterPackData" format=3]
+
+[ext_resource type="Script" path="res://game/shop/booster_pack/booster_pack_data.gd" id="1_pack_data"]
+[ext_resource type="Resource" path="res://content/cards/all_cards.tres" id="2_catalog"]
+
+[resource]
+script = ExtResource("1_pack_data")
+card_catalog = ExtResource("2_catalog")
+price = 5
+reward_count = 3
+title = "Wild Booster Pack"
+description = "Choose 1 of 3 cards for your collection."
+pack_color = Color(0.870588, 0.619608, 0.254902, 1)
+accent_color = Color(0.533333, 0.294118, 0.168627, 1)
+common_chance = 70.0
+uncommon_chance = 20.0
+rare_chance = 8.0
+epic_chance = 1.8
+mythic_chance = 0.2

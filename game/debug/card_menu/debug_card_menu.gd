@@ -16,7 +16,13 @@ func _ready() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	var key_event := event as InputEventKey
-	if not key_event or key_event.keycode != KEY_F1 or not key_event.pressed or key_event.echo:
+	if (
+		not key_event
+		or key_event.keycode != KEY_J
+		or not key_event.ctrl_pressed
+		or not key_event.pressed
+		or key_event.echo
+	):
 		return
 	if _is_open:
 		_close_menu()

@@ -12,21 +12,12 @@ const CARD_SLOT_SCENE := preload("res://game/battle/card_slot.tscn")
 @onready var combat: BattleCombat = $Combat
 
 var _shop_active := false
+var _slots_locked := false
 
 
 func _ready() -> void:
 	_build_arena()
 	get_viewport().size_changed.connect(_center_arena)
-
-
-func _unhandled_input(event: InputEvent) -> void:
-	var key_event := event as InputEventKey
-	if not key_event or key_event.keycode != KEY_SPACE or not key_event.pressed or key_event.echo:
-		return
-	if _shop_active:
-		return
-	if combat.start_combat():
-		get_viewport().set_input_as_handled()
 
 
 func _build_arena() -> void:
@@ -87,6 +78,12 @@ func get_all_slots() -> Array[CardSlot]:
 
 func set_shop_active(active: bool) -> void:
 	_shop_active = active
+
+
+func set_slots_locked(locked: bool) -> void:
+	_slots_locked = locked
+	for slot in get_all_slots():
+		slot.accepts_cards = not locked
 
 
 func _get_slots(row: HBoxContainer) -> Array[CardSlot]:

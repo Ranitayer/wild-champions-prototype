@@ -28,49 +28,54 @@ var _running := false
 var _bindings_by_id: Dictionary = {}
 
 
-func start_combat() -> bool:
+func start_combat(battle_seed: int = 0, snapshot: BattleBoardSnapshot = null) -> bool:
 	if _running:
 		return false
-	_run_combat()
+	_run_combat(battle_seed, snapshot)
 	return true
+
+
+func get_board_snapshot() -> BattleBoardSnapshot:
+	return BattleBoardSnapshot.from_arena(arena)
 
 
 func is_running() -> bool:
 	return _running
 
 
-func _run_combat() -> void:
+func _run_combat(battle_seed: int, snapshot: BattleBoardSnapshot) -> void:
 	_running = true
-	var states := _build_battle_states()
-	var events := BattleSimulator.new().run(states)
+	var active_snapshot: BattleBoardSnapshot = snapshot if snapshot else get_board_snapshot()
+	var states: Array[BattleCardState] = _build_battle_states(active_snapshot)
+	var events: Array[Dictionary] = BattleSimulator.new().run(states, battle_seed)
 	for event in events:
 		await _play_event(event)
 	_finish_combat()
 
 
-func _build_battle_states() -> Array[BattleCardState]:
+func _build_battle_states(snapshot: BattleBoardSnapshot) -> Array[BattleCardState]:
 	_bindings_by_id.clear()
-	var states: Array[BattleCardState] = []
-	var next_id := 0
-	for slot in arena.get_all_slots():
+	var states := snapshot.to_states()
+	for state in states:
+		var slot := _find_slot(state.team, state.slot_index)
+		if not slot:
+			continue
 		var card := slot.get_card()
 		if not card or not card.card_data:
 			continue
-		var state := BattleCardState.new(
-			next_id,
-			card.card_data,
-			slot.team,
-			slot.slot_index,
-			card.get_card_tier()
-		)
-		states.append(state)
-		_bindings_by_id[next_id] = BattleCardBinding.new(card, slot)
+		_bindings_by_id[state.card_id] = BattleCardBinding.new(card, slot)
 		card.reset_combat_visuals()
 		if not card.stat_changed.is_connected(_on_stat_changed):
 			card.stat_changed.connect(_on_stat_changed)
 		card.set_interaction_blocked(true, true)
-		next_id += 1
 	return states
+
+
+func _find_slot(team: int, slot_index: int) -> CardSlot:
+	for slot in arena.get_all_slots():
+		if slot.team == team and slot.slot_index == slot_index:
+			return slot
+	return null
 
 
 func _play_event(event: Dictionary) -> void:

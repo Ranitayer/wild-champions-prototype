@@ -7,6 +7,7 @@ signal merge_started(card: CardVisual, target: CardVisual)
 signal slotted(card: CardVisual)
 signal stat_changed(card: CardVisual, stat_type: CardStat.Type, delta: int)
 signal tier_changed(card: CardVisual, tier: int)
+signal hover_changed(card: CardVisual, hovered: bool)
 
 const OUTLINE_WIDTH := 4
 const DARK_COLOR := Color("151d28")
@@ -136,6 +137,8 @@ var _description_plain_text := ""
 var _trait_tooltip
 var _trait_tooltip_layer: CanvasLayer
 var _base_tooltip_sections: Array[Dictionary] = []
+var _extra_hover_controls: Array[Control] = []
+var _drag_guard: Callable
 var _card_tier := 1
 
 static var _last_hover_z_index := 0
@@ -199,6 +202,8 @@ func _try_start_drag(event: InputEvent) -> bool:
 	if _tier_cycle_shortcut_enabled and mouse_button.shift_pressed:
 		set_card_tier(_card_tier % card_data.get_max_tier() + 1)
 		return true
+	if _drag_guard.is_valid() and not bool(_drag_guard.call()):
+		return true
 	_start_drag()
 	return true
 
@@ -245,7 +250,27 @@ func _contains_visual_point(point: Vector2) -> bool:
 		var control := node as Control
 		if control.get_global_rect().has_point(point):
 			return true
+	for control in _extra_hover_controls:
+		if is_instance_valid(control) and control.get_global_rect().has_point(point):
+			return true
 	return false
+
+
+func add_hover_control(control: Control) -> void:
+	if control and not _extra_hover_controls.has(control):
+		_extra_hover_controls.append(control)
+
+
+func remove_hover_control(control: Control) -> void:
+	_extra_hover_controls.erase(control)
+
+
+func set_drag_guard(guard: Callable) -> void:
+	_drag_guard = guard
+
+
+func clear_drag_guard() -> void:
+	_drag_guard = Callable()
 
 
 func _input(event: InputEvent) -> void:
@@ -859,6 +884,7 @@ func _fit_description_text() -> void:
 
 func _on_mouse_entered() -> void:
 	_hovered = true
+	hover_changed.emit(self, true)
 	if _interaction_blocked:
 		return
 	if _dragging or _snapping:
@@ -876,6 +902,7 @@ func _on_mouse_entered() -> void:
 
 func _on_mouse_exited() -> void:
 	_hovered = false
+	hover_changed.emit(self, false)
 	if _interaction_blocked:
 		return
 	if _dragging or _snapping:

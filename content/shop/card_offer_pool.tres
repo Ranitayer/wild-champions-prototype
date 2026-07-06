@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="CardShopOfferData" format=3]
+
+[ext_resource type="Script" path="res://game/shop/card_offer/card_shop_offer_data.gd" id="1_offer_data"]
+[ext_resource type="Resource" path="res://content/cards/all_cards.tres" id="2_catalog"]
+
+[resource]
+script = ExtResource("1_offer_data")
+card_catalog = ExtResource("2_catalog")
+reward_count = 1
+common_chance = 55.0
+uncommon_chance = 30.0
+rare_chance = 12.0
+epic_chance = 2.7
+mythic_chance = 0.3
+common_price = 3
+uncommon_price = 8
+rare_price = 12
+epic_price = 25
+mythic_price = 40

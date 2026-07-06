@@ -6,6 +6,7 @@ const TEAM_PLAYER := 1
 
 var team := TEAM_PLAYER
 var slot_index := 0
+var accepts_cards := true
 var occupying_card: CardVisual
 var _background_style: StyleBoxFlat
 
@@ -25,6 +26,8 @@ func set_background_color(color: Color) -> void:
 
 
 func can_accept(card: Control) -> bool:
+	if not accepts_cards:
+		return false
 	var card_center := card.global_position + card.size * 0.5
 	return (not occupying_card or occupying_card == card) and get_global_rect().has_point(card_center)
 

@@ -1,7 +1,7 @@
 class_name BattleBlockEffect
 extends Node
 
-const SHARP_SHINE_SHADER := preload("res://game/battle/effects/shaders/sharp_shine.gdshader")
+const SHARP_SHINE_SHADER := preload("res://game/effects/shaders/sharp_shine.gdshader")
 
 @export_range(0.05, 1.0, 0.01) var duration := 0.36
 @export_range(0.01, 0.5, 0.01) var shine_width := 0.11

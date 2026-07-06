@@ -1,0 +1,65 @@
+[gd_scene format=3 uid="uid://cfaglaxckkx4j"]
+
+[ext_resource type="Script" uid="uid://ddkwgjyi3lnxx" path="res://game/shop/booster_pack/booster_pack.gd" id="1_pack"]
+[ext_resource type="Script" uid="uid://crxhcq4m0goek" path="res://game/effects/floating_effect.gd" id="2_float"]
+[ext_resource type="Script" path="res://game/effects/ray_burst_effect.gd" id="3_ray"]
+[ext_resource type="FontFile" path="res://assets/fonts/VampireWars-1GG2M.ttf" id="4_font"]
+[ext_resource type="PackedScene" path="res://game/cards/stat_circle.tscn" id="5_stat"]
+
+[node name="BoosterPack" type="TextureRect" unique_id=1249691299]
+offset_right = 200.0
+offset_bottom = 275.0
+mouse_filter = 2
+script = ExtResource("1_pack")
+
+[node name="PackBackground" type="Panel" parent="."]
+layout_mode = 0
+offset_right = 200.0
+offset_bottom = 275.0
+mouse_filter = 2
+
+[node name="InnerOutline" type="Panel" parent="."]
+layout_mode = 0
+offset_left = 24.5
+offset_top = 24.5
+offset_right = 175.5
+offset_bottom = 250.5
+mouse_filter = 2
+
+[node name="PackLetter" type="Label" parent="."]
+layout_mode = 0
+offset_left = 5.0
+offset_right = 195.0
+offset_bottom = 275.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.870588, 0.619608, 0.254902, 1)
+theme_override_colors/font_outline_color = Color(0.533333, 0.294118, 0.168627, 1)
+theme_override_constants/outline_size = 4
+theme_override_fonts/font = ExtResource("4_font")
+theme_override_font_sizes/font_size = 120
+text = "W"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="PriceStat" parent="." instance=ExtResource("5_stat")]
+layout_mode = 0
+offset_left = -12.0
+offset_top = -12.0
+offset_right = 43.0
+offset_bottom = 43.0
+fill_color = Color(0.870588, 0.619608, 0.254902, 1)
+
+[node name="RayBurstEffect" type="ColorRect" parent="." unique_id=1749634074]
+layout_mode = 0
+offset_left = -110.0
+offset_top = -72.5
+offset_right = 310.0
+offset_bottom = 347.5
+mouse_filter = 2
+script = ExtResource("3_ray")
+rotation_speed = 0.30000000000000004
+outer_radius = 1.1
+fade_power = 1.0
+
+[node name="FloatingEffect" type="Node" parent="." unique_id=2101443595]
+script = ExtResource("2_float")

@@ -4,24 +4,19 @@
 [ext_resource type="Texture2D" uid="uid://b16tbkonblbpc" path="res://assets/art/cards/seraphina.png" id="2_art"]
 [ext_resource type="Script" uid="uid://b551vbw3ovtvi" path="res://game/cards/traits/poison_trait.gd" id="3_poison"]
 [ext_resource type="Script" uid="uid://boo1tovmjm1uu" path="res://game/cards/traits/survivalist_trait.gd" id="4_survivalist"]
-[ext_resource type="Script" path="res://game/cards/card_tier_override.gd" id="5_tier"]
-
-[sub_resource type="Resource" id="Poison_seraphina"]
-script = ExtResource("3_poison")
-value = 2
-
-[sub_resource type="Resource" id="Survivalist_seraphina"]
-script = ExtResource("4_survivalist")
+[ext_resource type="Script" uid="uid://buc18u4ppgb8o" path="res://game/cards/card_tier_override.gd" id="5_tier"]
 
 [sub_resource type="Resource" id="Tier2_seraphina"]
 script = ExtResource("5_tier")
-tier = 2
 attack = 4
 health = 5
 
 [sub_resource type="Resource" id="Poison4_seraphina"]
 script = ExtResource("3_poison")
 value = 4
+
+[sub_resource type="Resource" id="Survivalist_seraphina"]
+script = ExtResource("4_survivalist")
 
 [sub_resource type="Resource" id="Tier3_seraphina"]
 script = ExtResource("5_tier")
@@ -30,6 +25,10 @@ attack = 5
 health = 7
 replace_traits = true
 traits = Array[Resource]([SubResource("Poison4_seraphina"), SubResource("Survivalist_seraphina")])
+
+[sub_resource type="Resource" id="Poison_seraphina"]
+script = ExtResource("3_poison")
+value = 2
 
 [resource]
 script = ExtResource("1_data")

@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3 uid="uid://cduxec6m7v3uw"]
+[gd_scene load_steps=17 format=3 uid="uid://cduxec6m7v3uw"]
 
 [ext_resource type="Script" uid="uid://ddsl6sjh4kyp2" path="res://game/battle/battle_arena.gd" id="1_arena"]
 [ext_resource type="Script" uid="uid://7fyfaow6q0j7" path="res://game/battle/battle_combat.gd" id="2_combat"]
@@ -8,6 +8,14 @@
 [ext_resource type="Script" uid="uid://btkreavtayh3v" path="res://game/ui/effect_popup/effect_popup.gd" id="6_effect_popup"]
 [ext_resource type="Script" path="res://game/shop/shop_transition.gd" id="7_shop"]
 [ext_resource type="PackedScene" path="res://game/battle/card_slot.tscn" id="8_slot"]
+[ext_resource type="PackedScene" path="res://game/shop/booster_pack/booster_pack.tscn" id="9_pack"]
+[ext_resource type="Script" path="res://game/shop/booster_pack/booster_pack_rewards.gd" id="10_rewards"]
+[ext_resource type="Script" path="res://game/shop/booster_pack/booster_pack_tooltip.gd" id="11_pack_tooltip"]
+[ext_resource type="Resource" path="res://content/booster_packs/wilder_booster.tres" id="12_wilder"]
+[ext_resource type="PackedScene" path="res://game/shop/card_offer/card_shop_offer.tscn" id="13_card_offer"]
+[ext_resource type="PackedScene" path="res://game/shop/wallet/shop_wallet.tscn" id="14_wallet"]
+[ext_resource type="Script" path="res://game/shop/shop_random.gd" id="15_shop_random"]
+[ext_resource type="Script" path="res://game/match/match_flow.gd" id="16_match_flow"]
 
 [node name="BattleArena" type="Control" unique_id=1328102770]
 custom_minimum_size = Vector2(875, 710)
@@ -70,6 +78,59 @@ script = ExtResource("2_combat")
 [node name="ShopTransition" type="Node" parent="."]
 script = ExtResource("7_shop")
 
+[node name="ShopRandom" type="Node" parent="."]
+script = ExtResource("15_shop_random")
+
+[node name="MatchFlow" type="Node" parent="."]
+script = ExtResource("16_match_flow")
+
+[node name="ShopLayer" type="CanvasLayer" parent="."]
+layer = 50
+
+[node name="BoosterPackRewards" type="Control" parent="ShopLayer"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("10_rewards")
+
+[node name="BoosterPackTooltip" type="Panel" parent="ShopLayer"]
+visible = false
+offset_right = 360.0
+offset_bottom = 120.0
+mouse_filter = 2
+script = ExtResource("11_pack_tooltip")
+
+[node name="BoosterPack" parent="ShopLayer" instance=ExtResource("9_pack")]
+center_offset_x = 0.0
+
+[node name="WilderBoosterPack" parent="ShopLayer" instance=ExtResource("9_pack")]
+pack_data = ExtResource("12_wilder")
+center_offset_x = -350.0
+
+[node name="CardShopOffer" parent="ShopLayer" instance=ExtResource("13_card_offer")]
+center_offset_x = 350.0
+
+[node name="WalletAnchor" type="MarginContainer" parent="ShopLayer"]
+anchors_preset = 8
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -97.5
+offset_top = -97.5
+offset_right = -15.0
+offset_bottom = -15.0
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 2
+
+[node name="ShopWallet" parent="ShopLayer/WalletAnchor" instance=ExtResource("14_wallet")]
+layout_mode = 2
+
 [node name="EffectsLayer" type="CanvasLayer" parent="." unique_id=71617937]
 layer = 100
 
@@ -85,6 +146,18 @@ duration = 0.45
 
 [node name="UILayer" type="CanvasLayer" parent="." unique_id=764921261]
 layer = 101
+
+[node name="ReadyButton" type="Button" parent="UILayer"]
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 190.0
+offset_top = -69.0
+offset_right = 350.0
+offset_bottom = -15.0
+grow_vertical = 0
+mouse_default_cursor_shape = 2
+text = "READY"
 
 [node name="StatPopup" type="Node" parent="UILayer" unique_id=201342834]
 script = ExtResource("4_popup")

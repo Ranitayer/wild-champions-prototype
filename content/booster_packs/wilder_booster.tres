@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="BoosterPackData" format=3]
+
+[ext_resource type="Script" path="res://game/shop/booster_pack/booster_pack_data.gd" id="1_pack_data"]
+[ext_resource type="Resource" path="res://content/cards/all_cards.tres" id="2_catalog"]
+
+[resource]
+script = ExtResource("1_pack_data")
+card_catalog = ExtResource("2_catalog")
+price = 10
+reward_count = 1
+title = "Wilder Booster Pack"
+description = "Get 1 card, guaranteed Uncommon or better."
+pack_color = Color(0.647059, 0.188235, 0.188235, 1)
+accent_color = Color(0.458824, 0.141176, 0.219608, 1)
+common_chance = 0.0
+uncommon_chance = 75.0
+rare_chance = 20.0
+epic_chance = 4.5
+mythic_chance = 0.5

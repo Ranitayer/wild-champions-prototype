@@ -1,0 +1,13 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://game/shop/card_offer/card_shop_offer.gd" id="1_offer"]
+[ext_resource type="Script" path="res://game/effects/floating_effect.gd" id="2_float"]
+
+[node name="CardShopOffer" type="Control"]
+offset_right = 200.0
+offset_bottom = 275.0
+mouse_filter = 2
+script = ExtResource("1_offer")
+
+[node name="FloatingEffect" type="Node" parent="."]
+script = ExtResource("2_float")

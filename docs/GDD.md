@@ -1,7 +1,7 @@
 # Wild Champions - Game Design Document
 
 Status: Living draft  
-Last updated: 2026-07-05
+Last updated: 2026-07-06
 
 ## Game Summary
 
@@ -78,10 +78,17 @@ To define:
 ## Shop and Collection
 
 - Pressing F2 transitions the prototype arena into its shop layout.
+- Players currently enter the prototype shop with 50 currency.
+- The Wild Booster Pack costs 5 and offers a choice of one from three cards.
+- The Wilder Booster Pack costs 10 and grants one card with no Common results.
+- The shop also offers one individual card priced by rarity: Common 3, Uncommon 8, Rare 12, Epic 25, and Mythic 40.
+- Shop rewards use a seeded random sequence so the same seed and card catalog reproduce the same rolls.
+- Booster rewards are rolled and validated before payment. Payment completes before the pack or card acquisition animation begins.
+- Opening a booster closes and locks the card collection until the player takes a reward.
 - Cards may finish a drag only by entering an open arena slot or merging with a valid matching card.
 - Cards released elsewhere return to the player's card collection.
 - The persistent Cards button opens a two-column, scrollable view of collected cards. Collected cards can be dragged back into play.
-- Shop inventory, prices, currency, refresh rules, and purchase rules are TBD.
+- Currency persistence, shop refresh rules, and seed authority are TBD.
 
 ## Champions
 
@@ -125,6 +132,7 @@ The first playable target should prove one complete loop: configure a legal setu
 
 ## Change Log
 
+- 2026-07-06: Defined prototype shop prices, starting currency, seeded reward rolls, validated payment flow, and collection locking during booster choices.
 - 2026-07-05: Added the shop layout transition and persistent card collection for invalid card drops.
 - 2026-07-05: Capped Epic/Mythic cards at Tier 2 and added Nimble Tier 2 with Overwhelm.
 - 2026-07-05: Added Peedie, Seraphina, and Batteroo Tier 2–3 upgrades.
