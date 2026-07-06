@@ -3,9 +3,22 @@
 [ext_resource type="Script" uid="uid://dsht6jxxa5f8m" path="res://game/cards/card_data.gd" id="1_data"]
 [ext_resource type="Texture2D" uid="uid://breqa5niynbah" path="res://assets/art/cards/nimble.png" id="2_art"]
 [ext_resource type="Script" uid="uid://cfg4dduwyr0i0" path="res://game/cards/effects/every_nth_attack_double_effect.gd" id="3_effect"]
+[ext_resource type="Script" path="res://game/cards/card_tier_override.gd" id="4_tier"]
+[ext_resource type="Script" path="res://game/cards/traits/overwhelm_trait.gd" id="5_overwhelm"]
 
 [sub_resource type="Resource" id="EverySecondAttack_nimble"]
 script = ExtResource("3_effect")
+
+[sub_resource type="Resource" id="Overwhelm_nimble"]
+script = ExtResource("5_overwhelm")
+
+[sub_resource type="Resource" id="Tier2_nimble"]
+script = ExtResource("4_tier")
+tier = 2
+attack = 6
+health = 4
+replace_traits = true
+traits = Array[Resource]([SubResource("Overwhelm_nimble")])
 
 [resource]
 script = ExtResource("1_data")
@@ -19,3 +32,4 @@ attack = 4
 health = 2
 cooldown = 1
 effects = Array[Resource]([SubResource("EverySecondAttack_nimble")])
+tier_overrides = Array[Resource]([SubResource("Tier2_nimble")])

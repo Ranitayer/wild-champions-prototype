@@ -1,6 +1,8 @@
 class_name CardMergeAnimator
 extends Node
 
+signal merge_finished(target: CardVisual)
+
 @export_group("Slam")
 @export_range(0.05, 0.5, 0.01) var align_duration := 0.14
 @export_range(0.03, 0.4, 0.01) var anticipation_duration := 0.10
@@ -86,3 +88,4 @@ func play(source: CardVisual, target: CardVisual) -> void:
 	bounce_tween.parallel().tween_property(target.card_surface, "scale", Vector2.ONE, bounce_duration * 0.5)
 	await bounce_tween.finished
 	target.finish_merge(target_z)
+	merge_finished.emit(target)

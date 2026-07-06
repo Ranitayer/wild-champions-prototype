@@ -2,6 +2,9 @@ class_name CardVisual
 extends Control
 
 signal drag_started(card: CardVisual)
+signal invalid_drop_requested(card: CardVisual)
+signal merge_started(card: CardVisual, target: CardVisual)
+signal slotted(card: CardVisual)
 signal stat_changed(card: CardVisual, stat_type: CardStat.Type, delta: int)
 signal tier_changed(card: CardVisual, tier: int)
 
@@ -51,7 +54,7 @@ var hit_flash_duration := 0.08
 var hit_orange_duration := 0.10
 var survival_sway_count := 4
 var dodge_rotation_degrees := 6.0
-var card_size := Vector2(200.0, 275.0)
+var card_size := CardMetrics.SIZE
 var art_margin := 8.0
 var hover_scale := 1.4
 var hover_lift := 24.0
@@ -59,7 +62,6 @@ var hover_duration := 0.22
 var release_duration := 0.12
 var drag_pickup_zoom_bonus := 0.1
 var drag_pickup_sway := 3.0
-var drag_release_bob := 0.1
 var drag_max_sway := 8.0
 var drag_sway_sensitivity := 0.35
 var drag_sway_response := 18.0
@@ -76,9 +78,9 @@ var title_box_corner_radius := 6
 var title_font_size := 20
 var title_side_margin := 10.0
 var description_side_margin := 12.0
-var description_top_gap := 10.0
+var description_top_gap := 2.0
 var description_bottom_margin := 28.0
-var description_stat_gap := 8.0
+var description_stat_gap := 4.0
 var description_min_font_size := 10
 var description_max_font_size := 18
 var bottom_stat_size := 55.0
@@ -124,6 +126,7 @@ var _pickup_sway_active := false
 var _current_slot: CardSlot
 var _interaction_blocked := false
 var _tooltip_hover_while_blocked := false
+var _tier_cycle_shortcut_enabled := false
 var _resting_z_index := 0
 var _attack_start_position := Vector2.ZERO
 var _attack_start_z_index := 0
@@ -193,6 +196,9 @@ func _try_start_drag(event: InputEvent) -> bool:
 		return false
 	if not _is_top_card_at(get_global_mouse_position()):
 		return false
+	if _tier_cycle_shortcut_enabled and mouse_button.shift_pressed:
+		set_card_tier(_card_tier % card_data.get_max_tier() + 1)
+		return true
 	_start_drag()
 	return true
 
@@ -205,6 +211,14 @@ func set_interaction_blocked(blocked: bool, allow_tooltip_hover := false) -> voi
 		_on_mouse_exited()
 	elif not blocked and was_hovered:
 		_hovered = false
+
+
+func enable_tier_cycle_shortcut() -> void:
+	_tier_cycle_shortcut_enabled = true
+
+
+func disable_tier_cycle_shortcut() -> void:
+	_tier_cycle_shortcut_enabled = false
 
 
 func _can_hover_tooltip() -> bool:
@@ -330,13 +344,14 @@ func _configure_art() -> void:
 
 func _apply_data() -> void:
 	var data := card_data if card_data else CardData.new()
+	tier_indicator.max_tier = data.get_max_tier()
+	_card_tier = clampi(data.tier, 1, data.get_max_tier())
 	title_label.text = data.title
 	_apply_description(data)
 	art_texture.texture = data.art
-	_card_tier = clampi(data.tier, 1, CardData.MAX_TIER)
 	tier_indicator.tier = _card_tier
-	attack_stat.value = data.attack
-	health_stat.value = data.health
+	attack_stat.value = data.get_attack(_card_tier)
+	health_stat.value = data.get_health(_card_tier)
 	cooldown_stat.value = data.cooldown
 	_apply_rarity(data.rarity)
 	_fit_description_text()
@@ -344,20 +359,21 @@ func _apply_data() -> void:
 
 func _apply_description(data: CardData) -> void:
 	var trait_lines: Array[String] = []
-	for trait_resource in data.traits:
+	for trait_resource in data.get_traits(_card_tier):
 		var trait_definition := trait_resource as CardTrait
 		if trait_definition:
 			trait_lines.append(trait_definition.get_display_text())
-	var trait_text := "\n".join(trait_lines)
-	_description_plain_text = data.description
-	if not trait_text.is_empty():
-		_description_plain_text += ("\n" if not _description_plain_text.is_empty() else "") + trait_text
+	var trait_text := " . ".join(trait_lines)
+	var tier_description := data.get_description(_card_tier)
+	_description_plain_text = trait_text
+	if not tier_description.is_empty():
+		_description_plain_text += ("\n" if not _description_plain_text.is_empty() else "") + tier_description
 
 	var parts: Array[String] = []
-	if not data.description.is_empty():
-		parts.append(data.description)
 	if not trait_text.is_empty():
 		parts.append("[color=#%s]%s[/color]" % [TRAIT_COLOR_HEX, trait_text])
+	if not tier_description.is_empty():
+		parts.append(tier_description)
 	description_label.text = "[center]%s[/center]" % "\n".join(parts)
 
 
@@ -365,7 +381,7 @@ func _configure_trait_tooltip() -> void:
 	if not card_data:
 		return
 	_base_tooltip_sections.clear()
-	for trait_resource in card_data.traits:
+	for trait_resource in card_data.get_traits(_card_tier):
 		var trait_definition := trait_resource as CardTrait
 		if trait_definition:
 			_base_tooltip_sections.append({
@@ -430,20 +446,37 @@ func get_card_tier() -> int:
 
 
 func set_card_tier(value: int) -> void:
-	var next_tier := clampi(value, 1, CardData.MAX_TIER)
+	var max_tier := card_data.get_max_tier() if card_data else CardData.MAX_TIER
+	var next_tier := clampi(value, 1, max_tier)
 	if next_tier == _card_tier:
 		return
 	_card_tier = next_tier
 	tier_indicator.tier = _card_tier
+	_apply_tier_data()
 	tier_changed.emit(self, _card_tier)
+
+
+func _apply_tier_data() -> void:
+	if not card_data:
+		return
+	var was_suppressing := _suppress_stat_changes
+	_suppress_stat_changes = true
+	set_attack_value(card_data.get_attack(_card_tier))
+	set_health_value(card_data.get_health(_card_tier))
+	_apply_description(card_data)
+	_fit_description_text()
+	_configure_trait_tooltip()
+	_suppress_stat_changes = was_suppressing
 
 
 func can_merge_with(other: CardVisual) -> bool:
 	if not is_instance_valid(other) or other == self:
 		return false
-	if _card_tier != other._card_tier or _card_tier >= CardData.MAX_TIER:
+	if _card_tier != other._card_tier:
 		return false
 	if not card_data or not other.card_data:
+		return false
+	if _card_tier >= card_data.get_max_tier() or _card_tier >= other.card_data.get_max_tier():
 		return false
 	if card_data == other.card_data:
 		return true
@@ -593,7 +626,7 @@ func set_poison_value(value: int, show_popup := true) -> void:
 
 
 func _set_stat_value(stat: StatCircle, stat_type: CardStat.Type, value: int, show_popup := true) -> void:
-	var normalized_value := maxi(0, value)
+	var normalized_value := value if stat_type == CardStat.Type.HEALTH else maxi(0, value)
 	var delta := normalized_value - stat.value
 	stat.value = normalized_value
 	if delta != 0 and show_popup and not _suppress_stat_changes:
@@ -612,9 +645,9 @@ func reset_combat_visuals() -> void:
 	card_surface.position = Vector2.ZERO
 	card_surface.scale = Vector2.ONE
 	card_surface.rotation_degrees = 0.0
-	set_attack_value(card_data.attack if card_data else 0)
+	set_attack_value(card_data.get_attack(_card_tier) if card_data else 0)
 	set_temporary_attack_value(0, false)
-	set_health_value(card_data.health if card_data else 0)
+	set_health_value(card_data.get_health(_card_tier) if card_data else 0)
 	set_cooldown_value(maxi(1, card_data.cooldown) if card_data else 1)
 	set_poison_value(0, false)
 	_suppress_stat_changes = false
@@ -666,6 +699,11 @@ func _on_attack_return_finished() -> void:
 
 
 func play_hit_animation(attacker_center: Vector2) -> void:
+	var hit_tween := start_hit_animation(attacker_center)
+	await hit_tween.finished
+
+
+func start_hit_animation(attacker_center: Vector2) -> Tween:
 	_stop_tweens()
 	visual_group.material = _hit_flash_material
 	_flash_hit()
@@ -686,7 +724,7 @@ func play_hit_animation(attacker_center: Vector2) -> void:
 		_motion_tween.parallel().tween_property(card_surface, "rotation_degrees", hit_rotation_shake_degrees * shake_sign, hit_duration / maxf(1.0, float(hit_shake_count)))
 	_motion_tween.tween_property(card_surface, "position", start_position, hit_duration * 0.35)
 	_motion_tween.parallel().tween_property(card_surface, "rotation_degrees", 0.0, hit_duration * 0.35)
-	await _motion_tween.finished
+	return _motion_tween
 
 
 func play_death_animation() -> void:
@@ -892,6 +930,7 @@ func _stop_drag() -> void:
 	_stop_tweens()
 	var merge_target := _find_merge_target()
 	if merge_target:
+		merge_started.emit(self, merge_target)
 		merge_target.merge_animator.play(self, merge_target)
 		return
 	var target_slot := _find_drop_slot()
@@ -899,6 +938,7 @@ func _stop_drag() -> void:
 	if snapped_to_slot:
 		target_slot.occupy(self)
 		_current_slot = target_slot
+		slotted.emit(self)
 	z_index = _resting_z_index
 
 	if snapped_to_slot:
@@ -911,17 +951,18 @@ func _stop_drag() -> void:
 		_motion_tween.tween_property(self, "global_position", target_slot.get_snap_position(card_size), snap_duration)
 		_motion_tween.finished.connect(_on_snap_finished)
 		return
+	invalid_drop_requested.emit(self)
 
-	var target_scale_value := hover_scale if _hovered else 1.0
-	var bob_scale := Vector2.ONE * maxf(0.1, target_scale_value - drag_release_bob)
-	var target_scale := Vector2.ONE * target_scale_value
-	var target_y := -hover_lift if _hovered else 0.0
-	_motion_tween = create_tween().set_parallel(true)
-	_motion_tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	_motion_tween.tween_property(card_surface, "scale", bob_scale, release_duration)
-	_motion_tween.tween_property(card_surface, "rotation_degrees", 0.0, release_duration)
-	_motion_tween.tween_property(card_surface, "position:y", target_y, release_duration)
-	_motion_tween.chain().tween_property(card_surface, "scale", target_scale, release_duration).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+func prepare_for_collection() -> void:
+	_stop_tweens()
+	_hovered = false
+	_dragging = false
+	_snapping = true
+	_interaction_blocked = true
+	z_index = DRAG_Z_INDEX
+	if _trait_tooltip:
+		_trait_tooltip.hide()
 
 
 func _find_drop_slot() -> CardSlot:

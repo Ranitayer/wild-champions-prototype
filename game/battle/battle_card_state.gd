@@ -5,6 +5,7 @@ var card_id: int
 var data: CardData
 var team: int
 var slot_index: int
+var tier: int
 var attack: int
 var health: int
 var cooldown: int
@@ -14,17 +15,18 @@ var traits: Array[BattleTraitState] = []
 var temporary_attacks: Array[BattleTemporaryAttack] = []
 
 
-func _init(id: int, card_data: CardData, card_team: int, index: int) -> void:
+func _init(id: int, card_data: CardData, card_team: int, index: int, card_tier := 1) -> void:
 	card_id = id
 	data = card_data
 	team = card_team
 	slot_index = index
-	attack = data.attack
-	health = data.health
+	tier = clampi(card_tier, 1, data.get_max_tier())
+	attack = data.get_attack(tier)
+	health = data.get_health(tier)
 	cooldown = maxi(1, data.cooldown)
 	poison = 0
 	attacks_made = 0
-	for trait_resource in data.traits:
+	for trait_resource in data.get_traits(tier):
 		var trait_definition := trait_resource as CardTrait
 		if trait_definition:
 			acquire_trait(trait_definition, trait_definition.value)
@@ -32,6 +34,10 @@ func _init(id: int, card_data: CardData, card_team: int, index: int) -> void:
 
 func is_alive() -> bool:
 	return health > 0
+
+
+func get_effects() -> Array[Resource]:
+	return data.get_effects(tier)
 
 
 func acquire_trait(definition: CardTrait, amount := 1) -> void:
@@ -99,6 +105,34 @@ func get_attack_miss_trait() -> BattleTraitState:
 	return null
 
 
+func get_attack_overflow_damage(damage: int, target_health_before: int, target_survived: bool) -> int:
+	var result := 0
+	for trait_state in traits:
+		result += trait_state.definition.get_attack_overflow_damage(
+			damage,
+			target_health_before,
+			target_survived,
+			trait_state.value
+		)
+	return maxi(0, result)
+
+
+func get_attack_overflow_trait(
+	damage: int,
+	target_health_before: int,
+	target_survived: bool
+) -> BattleTraitState:
+	for trait_state in traits:
+		if trait_state.definition.get_attack_overflow_damage(
+			damage,
+			target_health_before,
+			target_survived,
+			trait_state.value
+		) > 0:
+			return trait_state
+	return null
+
+
 func try_prevent_death() -> BattleTraitState:
 	if is_alive():
 		return null
@@ -134,6 +168,7 @@ func get_stalemate_signature() -> String:
 		str(card_id),
 		str(team),
 		str(slot_index),
+		str(tier),
 		str(attack),
 		str(health),
 		str(poison),

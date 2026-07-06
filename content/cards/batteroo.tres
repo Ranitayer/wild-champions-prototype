@@ -3,9 +3,22 @@
 [ext_resource type="Script" uid="uid://dsht6jxxa5f8m" path="res://game/cards/card_data.gd" id="1_data"]
 [ext_resource type="Texture2D" uid="uid://ccr3dh5iaph57" path="res://assets/art/cards/batteroo.png" id="2_art"]
 [ext_resource type="Script" uid="uid://bakxgsnm7wjwv" path="res://game/cards/traits/flying_trait.gd" id="3_flying"]
+[ext_resource type="Script" path="res://game/cards/card_tier_override.gd" id="4_tier"]
 
 [sub_resource type="Resource" id="Flying_batteroo"]
 script = ExtResource("3_flying")
+
+[sub_resource type="Resource" id="Tier2_batteroo"]
+script = ExtResource("4_tier")
+tier = 2
+attack = 2
+health = 2
+
+[sub_resource type="Resource" id="Tier3_batteroo"]
+script = ExtResource("4_tier")
+tier = 3
+attack = 4
+health = 3
 
 [resource]
 script = ExtResource("1_data")
@@ -17,3 +30,4 @@ attack = 1
 health = 1
 cooldown = 1
 traits = Array[Resource]([SubResource("Flying_batteroo")])
+tier_overrides = Array[Resource]([SubResource("Tier2_batteroo"), SubResource("Tier3_batteroo")])

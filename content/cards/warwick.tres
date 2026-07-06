@@ -3,9 +3,28 @@
 [ext_resource type="Script" uid="uid://dsht6jxxa5f8m" path="res://game/cards/card_data.gd" id="1_data"]
 [ext_resource type="Texture2D" uid="uid://8nxcjdovavau" path="res://assets/art/cards/warwick.png" id="2_art"]
 [ext_resource type="Script" uid="uid://v8noom6i3ma4" path="res://game/cards/traits/lifesteal_trait.gd" id="3_lifesteal"]
+[ext_resource type="Script" path="res://game/cards/card_tier_override.gd" id="4_tier"]
+[ext_resource type="Script" path="res://game/cards/traits/survivalist_trait.gd" id="5_survivalist"]
 
 [sub_resource type="Resource" id="Lifesteal_warwick"]
 script = ExtResource("3_lifesteal")
+
+[sub_resource type="Resource" id="Tier2_warwick"]
+script = ExtResource("4_tier")
+tier = 2
+attack = 3
+health = 5
+
+[sub_resource type="Resource" id="Survivalist_warwick"]
+script = ExtResource("5_survivalist")
+
+[sub_resource type="Resource" id="Tier3_warwick"]
+script = ExtResource("4_tier")
+tier = 3
+attack = 4
+health = 6
+replace_traits = true
+traits = Array[Resource]([SubResource("Lifesteal_warwick"), SubResource("Survivalist_warwick")])
 
 [resource]
 script = ExtResource("1_data")
@@ -19,3 +38,4 @@ attack = 2
 health = 4
 cooldown = 3
 traits = Array[Resource]([SubResource("Lifesteal_warwick")])
+tier_overrides = Array[Resource]([SubResource("Tier2_warwick"), SubResource("Tier3_warwick")])

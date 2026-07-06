@@ -1,23 +1,18 @@
 [gd_scene format=3 uid="uid://re66x2rpxsrq"]
 
-[ext_resource type="Script" path="res://game/main.gd" id="1_main"]
-[ext_resource type="PackedScene" path="res://game/cards/card_template.tscn" id="1_ig7tw"]
-[ext_resource type="Resource" uid="uid://dbqt2vfhblcux" path="res://content/cards/stageroo.tres" id="2_data"]
-[ext_resource type="PackedScene" path="res://game/battle/battle_arena.tscn" id="3_arena"]
+[ext_resource type="Script" uid="uid://blkio23p5oocp" path="res://game/main.gd" id="1_main"]
+[ext_resource type="PackedScene" uid="uid://cduxec6m7v3uw" path="res://game/battle/battle_arena.tscn" id="3_arena"]
+[ext_resource type="PackedScene" path="res://game/shop/card_collection/card_collection.tscn" id="4_collection"]
 
 [node name="Main" type="Node2D" unique_id=509628755]
 script = ExtResource("1_main")
 
 [node name="BattleArena" parent="." unique_id=1536060208 instance=ExtResource("3_arena")]
-offset_left = 530.0
+offset_left = 522.5
 offset_top = 185.0
-offset_right = 1390.0
+offset_right = 1397.5
 offset_bottom = 895.0
 
-[node name="CardTemplate" parent="." unique_id=22736817 instance=ExtResource("1_ig7tw")]
-offset_left = 839.0
-offset_top = 274.0
-offset_right = 1039.0
-offset_bottom = 549.0
-card_data = ExtResource("2_data")
-attack_impact_margin = 4.0
+[node name="CardCollection" parent="." unique_id=715002593 instance=ExtResource("4_collection")]
+card_spacing = 30
+content_padding = 30

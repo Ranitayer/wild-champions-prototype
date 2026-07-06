@@ -11,6 +11,7 @@ signal death_prevented(card_id: int, effect_name: String, remaining_health: int)
 signal attack_missed(attacker_id: int, target_id: int)
 signal before_attack(attacker_id: int, target_id: int)
 signal damage_applied(card_id: int, amount: int, remaining_health: int)
+signal effect_damage_applied(source_id: int, target_id: int, amount: int, remaining_health: int)
 signal card_died(card_id: int)
 signal combat_finished
 
@@ -34,6 +35,10 @@ func start_combat() -> bool:
 	return true
 
 
+func is_running() -> bool:
+	return _running
+
+
 func _run_combat() -> void:
 	_running = true
 	var states := _build_battle_states()
@@ -51,7 +56,13 @@ func _build_battle_states() -> Array[BattleCardState]:
 		var card := slot.get_card()
 		if not card or not card.card_data:
 			continue
-		var state := BattleCardState.new(next_id, card.card_data, slot.team, slot.slot_index)
+		var state := BattleCardState.new(
+			next_id,
+			card.card_data,
+			slot.team,
+			slot.slot_index,
+			card.get_card_tier()
+		)
 		states.append(state)
 		_bindings_by_id[next_id] = BattleCardBinding.new(card, slot)
 		card.reset_combat_visuals()
@@ -78,6 +89,10 @@ func _play_event(event: Dictionary) -> void:
 			await _play_attack_missed(event)
 		"damage_applied":
 			await _play_damage(event)
+		"effect_damage_group":
+			await _play_effect_damage_group(event)
+		"effect_triggered":
+			await _play_effect_triggered(event)
 		"heal_applied":
 			await _play_heal(event)
 		"poison_applied":
@@ -88,8 +103,6 @@ func _play_event(event: Dictionary) -> void:
 			await _play_death_prevented(event)
 		"card_died":
 			_play_death(event)
-		"combat_finished":
-			pass
 
 
 func _play_tick(event: Dictionary) -> void:
@@ -256,6 +269,44 @@ func _play_damage(event: Dictionary) -> void:
 	if is_instance_valid(attacker.visual):
 		attacker.visual.set_temporary_attack_value(int(event["temporary_attack_remaining"]))
 		attacker.visual.set_cooldown_value(int(event["attacker_cooldown"]), false)
+	await _wait_for_effect_time(effect_start_ms)
+
+
+func _play_effect_damage_group(event: Dictionary) -> void:
+	var effect_start_ms := Time.get_ticks_msec()
+	var source_id := int(event["source_id"])
+	var source := _get_binding(source_id)
+	if not source:
+		return
+	var hit_tweens: Array[Tween] = []
+	var hits: Array = event["hits"]
+	for hit_value in hits:
+		var hit: Dictionary = hit_value
+		var target_id := int(hit["target_id"])
+		var target := _get_binding(target_id)
+		if not target:
+			continue
+		var damage := int(hit["damage"])
+		var remaining_health := int(hit["target_health"])
+		target.visual.set_health_value(remaining_health)
+		damage_applied.emit(target_id, damage, remaining_health)
+		effect_damage_applied.emit(source_id, target_id, damage, remaining_health)
+		hit_tweens.append(target.visual.start_hit_animation(source.visual.get_card_center()))
+	if not hit_tweens.is_empty():
+		await hit_tweens[0].finished
+	await _wait_for_effect_time(effect_start_ms)
+
+
+func _play_effect_triggered(event: Dictionary) -> void:
+	var effect_start_ms := Time.get_ticks_msec()
+	var binding := _get_binding(int(event["card_id"]))
+	if not binding:
+		return
+	effect_popup.show_text(
+		binding.visual,
+		str(event["effect_name"]),
+		Color(str(event["effect_color"]))
+	)
 	await _wait_for_effect_time(effect_start_ms)
 
 

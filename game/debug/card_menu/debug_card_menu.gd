@@ -36,6 +36,7 @@ func _open_menu() -> void:
 			var card := CARD_SCENE.instantiate() as CardVisual
 			card.card_data = card_data
 			card.set_meta("debug_preview", true)
+			card.enable_tier_cycle_shortcut()
 			card.drag_started.connect(_on_card_drag_started)
 			cards_row.add_child(card)
 	_is_open = true
@@ -50,6 +51,7 @@ func _close_menu() -> void:
 
 
 func _on_card_drag_started(card: CardVisual) -> void:
+	card.disable_tier_cycle_shortcut()
 	card.reparent(get_tree().current_scene, true)
 	card.remove_meta("debug_preview")
 	card.set_interaction_blocked(false)

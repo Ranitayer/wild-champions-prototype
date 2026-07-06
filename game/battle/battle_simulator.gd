@@ -43,7 +43,6 @@ func run(cards: Array[BattleCardState], battle_seed := 0) -> Array[Dictionary]:
 			previous_progress = current_progress
 		if stalled_ticks >= _stalemate_window(cards):
 			break
-	events.append({"type": "combat_finished"})
 	return events
 
 
@@ -99,6 +98,7 @@ func _resolve_attack(attacker: BattleCardState, cards: Array[BattleCardState], e
 			})
 			return
 	var triggering_poison := target.poison
+	var target_health_before := target.health
 	var damage := target.modify_incoming_attack_damage(attacker.get_total_attack())
 	target.health -= damage
 	attacker.cooldown = maxi(1, attacker.data.cooldown)
@@ -113,6 +113,25 @@ func _resolve_attack(attacker: BattleCardState, cards: Array[BattleCardState], e
 		"temporary_attack_remaining": temporary_attack_remaining,
 	})
 	_apply_death_prevention(target, events)
+	var overflow_damage := attacker.get_attack_overflow_damage(
+		damage,
+		target_health_before,
+		target.is_alive()
+	)
+	if overflow_damage > 0 and _has_living_adjacent(target, cards):
+		var overflow_trait := attacker.get_attack_overflow_trait(
+			damage,
+			target_health_before,
+			target.is_alive()
+		)
+		if overflow_trait:
+			events.append({
+				"type": "effect_triggered",
+				"card_id": attacker.card_id,
+				"effect_name": overflow_trait.definition.display_name,
+				"effect_color": overflow_trait.definition.get_trigger_color_hex(),
+			})
+		_apply_overflow_damage(attacker, target, overflow_damage, cards, events)
 	if target.is_alive() and triggering_poison > 0 and target.poison > 0:
 		var poison_damage := mini(triggering_poison, target.poison)
 		target.health -= poison_damage
@@ -164,9 +183,89 @@ func _apply_death_prevention(card: BattleCardState, events: Array[Dictionary]) -
 	})
 
 
+func _apply_overflow_damage(
+	source: BattleCardState,
+	defeated_target: BattleCardState,
+	amount: int,
+	cards: Array[BattleCardState],
+	events: Array[Dictionary]
+) -> void:
+	var left_target := _find_living_card_at(
+		cards,
+		defeated_target.team,
+		defeated_target.slot_index - 1
+	)
+	var right_target := _find_living_card_at(
+		cards,
+		defeated_target.team,
+		defeated_target.slot_index + 1
+	)
+	var targets: Array[BattleCardState] = []
+	var damage_amounts: Array[int] = []
+	if left_target and right_target:
+		targets.assign([left_target, right_target])
+		damage_amounts.assign([ceili(amount * 0.5), floori(amount * 0.5)])
+	elif left_target:
+		targets.append(left_target)
+		damage_amounts.append(amount)
+	elif right_target:
+		targets.append(right_target)
+		damage_amounts.append(amount)
+	_deal_grouped_effect_damage(source, targets, damage_amounts, events)
+
+
+func _has_living_adjacent(target: BattleCardState, cards: Array[BattleCardState]) -> bool:
+	return (
+		_find_living_card_at(cards, target.team, target.slot_index - 1) != null
+		or _find_living_card_at(cards, target.team, target.slot_index + 1) != null
+	)
+
+
+func _deal_grouped_effect_damage(
+	source: BattleCardState,
+	targets: Array[BattleCardState],
+	damage_amounts: Array[int],
+	events: Array[Dictionary]
+) -> void:
+	var hits: Array[Dictionary] = []
+	for index in targets.size():
+		var amount := damage_amounts[index]
+		if amount <= 0:
+			continue
+		var target := targets[index]
+		target.health -= amount
+		hits.append({
+			"target_id": target.card_id,
+			"damage": amount,
+			"target_health": target.health,
+		})
+	if hits.is_empty():
+		return
+	events.append({
+		"type": "effect_damage_group",
+		"source_id": source.card_id,
+		"hits": hits,
+	})
+	for target in targets:
+		_apply_death_prevention(target, events)
+		if not target.is_alive():
+			events.append({"type": "card_died", "card_id": target.card_id})
+
+
+func _find_living_card_at(
+	cards: Array[BattleCardState],
+	team: int,
+	slot_index: int
+) -> BattleCardState:
+	for card in cards:
+		if card.team == team and card.slot_index == slot_index and card.is_alive():
+			return card
+	return null
+
+
 func _apply_start_of_combat_effects(cards: Array[BattleCardState], events: Array[Dictionary]) -> void:
 	for source in _ordered_cards(cards):
-		for effect_resource in source.data.effects:
+		for effect_resource in source.get_effects():
 			var effect := effect_resource as CardEffect
 			if effect:
 				effect.apply_start_of_combat(source, cards, events)
@@ -178,7 +277,7 @@ func _apply_before_attack_effects(
 	cards: Array[BattleCardState],
 	events: Array[Dictionary]
 ) -> void:
-	for effect_resource in source.data.effects:
+	for effect_resource in source.get_effects():
 		var effect := effect_resource as CardEffect
 		if effect:
 			effect.apply_before_attack(source, target, cards, events)
@@ -250,7 +349,7 @@ func _derive_seed(cards: Array[BattleCardState]) -> int:
 	for card in _ordered_cards(cards):
 		for byte in card.data.title.to_utf8_buffer():
 			result = _mix_seed(result, byte)
-		for value in [card.team, card.slot_index, card.attack, card.health, card.cooldown]:
+		for value in [card.team, card.slot_index, card.tier, card.attack, card.health, card.cooldown]:
 			result = _mix_seed(result, int(value))
 		for trait_state in card.traits:
 			for byte in str(trait_state.definition.trait_id).to_utf8_buffer():
@@ -271,7 +370,7 @@ func _stalemate_window(cards: Array[BattleCardState]) -> int:
 			ticks = maxi(ticks, maxi(1, maxi(card.data.cooldown, card.cooldown)))
 			if card.get_attack_miss_trait():
 				multiplier = MISS_STALEMATE_MULTIPLIER
-			for effect_resource in card.data.effects:
+			for effect_resource in card.get_effects():
 				var effect := effect_resource as CardEffect
 				if effect:
 					multiplier = maxi(multiplier, effect.get_attack_cycle_length())

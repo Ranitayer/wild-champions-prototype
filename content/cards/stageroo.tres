@@ -3,9 +3,29 @@
 [ext_resource type="Script" uid="uid://dsht6jxxa5f8m" path="res://game/cards/card_data.gd" id="1_data"]
 [ext_resource type="Texture2D" uid="uid://b2lblxxx0f61o" path="res://assets/art/cards/stageroo.png" id="2_art"]
 [ext_resource type="Script" uid="uid://ble1ynxs4ugg4" path="res://game/cards/effects/adjacent_attack_buff_effect.gd" id="3_effect"]
+[ext_resource type="Script" uid="uid://buc18u4ppgb8o" path="res://game/cards/card_tier_override.gd" id="4_tier"]
+[ext_resource type="Script" path="res://game/cards/effects/all_allies_attack_buff_effect.gd" id="5_allies"]
 
 [sub_resource type="Resource" id="AdjacentAttackBuff_stageroo"]
 script = ExtResource("3_effect")
+
+[sub_resource type="Resource" id="Tier2_stageroo"]
+script = ExtResource("4_tier")
+attack = 5
+health = 6
+
+[sub_resource type="Resource" id="AllAlliesAttackBuff_stageroo"]
+script = ExtResource("5_allies")
+amount = 2
+
+[sub_resource type="Resource" id="Tier3_stageroo"]
+script = ExtResource("4_tier")
+tier = 3
+attack = 6
+health = 8
+description = "Start of combat: All allies get +2 Attack."
+replace_effects = true
+effects = Array[Resource]([SubResource("AllAlliesAttackBuff_stageroo")])
 
 [resource]
 script = ExtResource("1_data")
@@ -17,3 +37,4 @@ attack = 4
 health = 4
 cooldown = 3
 effects = Array[Resource]([SubResource("AdjacentAttackBuff_stageroo")])
+tier_overrides = Array[Resource]([SubResource("Tier2_stageroo"), SubResource("Tier3_stageroo")])

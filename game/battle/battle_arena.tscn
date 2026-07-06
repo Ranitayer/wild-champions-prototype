@@ -1,4 +1,4 @@
-[gd_scene format=3 uid="uid://cduxec6m7v3uw"]
+[gd_scene load_steps=9 format=3 uid="uid://cduxec6m7v3uw"]
 
 [ext_resource type="Script" uid="uid://ddsl6sjh4kyp2" path="res://game/battle/battle_arena.gd" id="1_arena"]
 [ext_resource type="Script" uid="uid://7fyfaow6q0j7" path="res://game/battle/battle_combat.gd" id="2_combat"]
@@ -6,35 +6,69 @@
 [ext_resource type="Script" uid="uid://ck80686wamnvo" path="res://game/ui/stat_popup/stat_popup.gd" id="4_popup"]
 [ext_resource type="Script" uid="uid://cf0ha7lfgw2ny" path="res://game/battle/effects/battle_block_effect.gd" id="5_block"]
 [ext_resource type="Script" uid="uid://btkreavtayh3v" path="res://game/ui/effect_popup/effect_popup.gd" id="6_effect_popup"]
+[ext_resource type="Script" path="res://game/shop/shop_transition.gd" id="7_shop"]
+[ext_resource type="PackedScene" path="res://game/battle/card_slot.tscn" id="8_slot"]
 
 [node name="BattleArena" type="Control" unique_id=1328102770]
-custom_minimum_size = Vector2(860, 710)
+custom_minimum_size = Vector2(875, 710)
 layout_mode = 3
 anchors_preset = 0
-offset_right = 860.0
+offset_right = 875.0
 offset_bottom = 710.0
 mouse_filter = 2
 script = ExtResource("1_arena")
 
+[node name="BackgroundLayer" type="CanvasLayer" parent="."]
+layer = -100
+
+[node name="Background" type="ColorRect" parent="BackgroundLayer"]
+unique_name_in_owner = true
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.458824, 0.654902, 0.262745, 1)
+
 [node name="TopSlots" type="HBoxContainer" parent="." unique_id=2132540216]
 unique_name_in_owner = true
 layout_mode = 0
-offset_right = 860.0
+offset_right = 875.0
 offset_bottom = 275.0
 mouse_filter = 2
-theme_override_constants/separation = 20
+theme_override_constants/separation = 25
+
+[node name="TopSlot1" parent="TopSlots" instance=ExtResource("8_slot")]
+
+[node name="TopSlot2" parent="TopSlots" instance=ExtResource("8_slot")]
+
+[node name="TopSlot3" parent="TopSlots" instance=ExtResource("8_slot")]
+
+[node name="TopSlot4" parent="TopSlots" instance=ExtResource("8_slot")]
 
 [node name="BottomSlots" type="HBoxContainer" parent="." unique_id=1372617464]
 unique_name_in_owner = true
 layout_mode = 0
 offset_top = 435.0
-offset_right = 860.0
+offset_right = 875.0
 offset_bottom = 710.0
 mouse_filter = 2
-theme_override_constants/separation = 20
+theme_override_constants/separation = 25
+
+[node name="BottomSlot1" parent="BottomSlots" instance=ExtResource("8_slot")]
+
+[node name="BottomSlot2" parent="BottomSlots" instance=ExtResource("8_slot")]
+
+[node name="BottomSlot3" parent="BottomSlots" instance=ExtResource("8_slot")]
+
+[node name="BottomSlot4" parent="BottomSlots" instance=ExtResource("8_slot")]
 
 [node name="Combat" type="Node" parent="." unique_id=522744334]
 script = ExtResource("2_combat")
+
+[node name="ShopTransition" type="Node" parent="."]
+script = ExtResource("7_shop")
 
 [node name="EffectsLayer" type="CanvasLayer" parent="." unique_id=71617937]
 layer = 100

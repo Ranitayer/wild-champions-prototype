@@ -7,10 +7,21 @@ const TEAM_PLAYER := 1
 var team := TEAM_PLAYER
 var slot_index := 0
 var occupying_card: CardVisual
+var _background_style: StyleBoxFlat
 
 
 func _ready() -> void:
 	add_to_group("card_slots")
+	_background_style = get_theme_stylebox("panel").duplicate() as StyleBoxFlat
+	add_theme_stylebox_override("panel", _background_style)
+
+
+func get_background_color() -> Color:
+	return _background_style.bg_color
+
+
+func set_background_color(color: Color) -> void:
+	_background_style.bg_color = color
 
 
 func can_accept(card: Control) -> bool:

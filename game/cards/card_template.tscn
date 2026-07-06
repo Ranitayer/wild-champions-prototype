@@ -49,7 +49,6 @@ corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
 
 [node name="CardTemplate" type="Control" unique_id=1836562310]
-custom_minimum_size = Vector2(200, 275)
 layout_mode = 3
 anchors_preset = 0
 offset_right = 200.0

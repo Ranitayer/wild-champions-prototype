@@ -22,9 +22,13 @@ const RADIUS := 6.0
 		circle_gap = maxf(0.0, value)
 		_update_layout()
 
+var max_tier := MAX_TIER:
+	set(value):
+		max_tier = clampi(value, 1, MAX_TIER)
+		_update_layout()
 var tier := 1:
 	set(value):
-		tier = clampi(value, 1, MAX_TIER)
+		tier = clampi(value, 1, max_tier)
 		queue_redraw()
 
 
@@ -35,7 +39,7 @@ func _ready() -> void:
 
 func _update_layout() -> void:
 	var diameter := RADIUS * 2.0
-	size = Vector2(diameter, diameter * MAX_TIER + circle_gap * (MAX_TIER - 1))
+	size = Vector2(diameter, diameter * max_tier + circle_gap * (max_tier - 1))
 	var parent_control := get_parent() as Control
 	if parent_control:
 		position = Vector2(parent_control.size.x - right_margin - size.x, top_margin)
@@ -43,8 +47,8 @@ func _update_layout() -> void:
 
 
 func _draw() -> void:
-	for row in range(MAX_TIER):
-		var tier_number := MAX_TIER - row
+	for row in range(max_tier):
+		var tier_number := max_tier - row
 		var center := Vector2(RADIUS, RADIUS + row * (RADIUS * 2.0 + circle_gap))
 		draw_circle(center, RADIUS, DARK_COLOR, true, -1.0, true)
 		if tier_number <= tier:

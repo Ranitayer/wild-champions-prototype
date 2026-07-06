@@ -1,0 +1,97 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://game/shop/card_collection/card_collection.gd" id="1_collection"]
+[ext_resource type="Script" path="res://game/shop/card_collection/card_collection_animator.gd" id="2_animator"]
+[ext_resource type="FontFile" uid="uid://g1ho36qv3g0r" path="res://assets/fonts/cardfont.ttf" id="3_font"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_button"]
+bg_color = Color(0.921569, 0.929412, 0.913725, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxEmpty" id="StyleBox_empty"]
+
+[node name="CardCollection" type="CanvasLayer"]
+layer = 90
+script = ExtResource("1_collection")
+
+[node name="Interface" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="CardsPanel" type="Panel" parent="Interface"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 15.0
+offset_top = -729.0
+offset_right = 485.0
+offset_bottom = -79.0
+grow_vertical = 0
+theme_override_styles/panel = SubResource("StyleBox_empty")
+
+[node name="Margin" type="MarginContainer" parent="Interface/CardsPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+[node name="Scroll" type="ScrollContainer" parent="Interface/CardsPanel/Margin"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 3
+
+[node name="ContentMargin" type="MarginContainer" parent="Interface/CardsPanel/Margin/Scroll"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/margin_left = 50
+theme_override_constants/margin_top = 50
+theme_override_constants/margin_right = 50
+theme_override_constants/margin_bottom = 50
+
+[node name="CardsGrid" type="GridContainer" parent="Interface/CardsPanel/Margin/Scroll/ContentMargin"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 20
+theme_override_constants/v_separation = 20
+columns = 2
+
+[node name="CardsButton" type="Button" parent="Interface"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 15.0
+offset_top = -69.0
+offset_right = 175.0
+offset_bottom = -15.0
+grow_vertical = 0
+mouse_default_cursor_shape = 2
+theme_override_colors/font_color = Color(0.0823529, 0.113725, 0.156863, 1)
+theme_override_colors/font_hover_color = Color(0.0823529, 0.113725, 0.156863, 1)
+theme_override_colors/font_pressed_color = Color(0.0823529, 0.113725, 0.156863, 1)
+theme_override_fonts/font = ExtResource("3_font")
+theme_override_font_sizes/font_size = 24
+theme_override_styles/normal = SubResource("StyleBox_button")
+theme_override_styles/hover = SubResource("StyleBox_button")
+theme_override_styles/pressed = SubResource("StyleBox_button")
+theme_override_styles/focus = SubResource("StyleBox_empty")
+text = "CARDS"
+
+[node name="Animator" type="Node" parent="."]
+unique_name_in_owner = true
+script = ExtResource("2_animator")

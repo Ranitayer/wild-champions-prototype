@@ -36,6 +36,15 @@ func get_incoming_attack_miss_chance(_trait_value: int) -> float:
 	return 0.0
 
 
+func get_attack_overflow_damage(
+	_damage: int,
+	_target_health_before: int,
+	_target_survived: bool,
+	_trait_value: int
+) -> int:
+	return 0
+
+
 func get_lethal_survival_health(_trait_value: int) -> int:
 	return 0
 

@@ -50,7 +50,7 @@ Cards are the primary strategic building blocks. Their exact role is TBD: they m
 - Cards use slightly rounded corners.
 - Cards enlarge and lift on hover, provide movement feedback while dragged, and snap into arena slots.
 - Cards have Common, Uncommon, Rare, Epic, and Mythic rarities with distinct top and bottom colors.
-- Cards have three merge tiers. Two identical cards of the same tier merge into the next tier, up to Tier 3. Tiers currently change only the tier indicator.
+- Common, Uncommon, and Rare cards have three merge tiers. Epic and Mythic cards have two. Two identical cards of the same tier merge into the next tier, up to that rarity's cap.
 - Card data is stored as Resources containing title, description, art, rarity, attack, health, and cooldown.
 - Permanent Attack changes update the main Attack stat. Limited-duration Attack changes use a separate temporary Attack stat and expire after their configured attack uses.
 - Traits are reusable valued card abilities, can be acquired during play, and appear in `#de9e41` text. Traits normally cap at 5 unless their rule explicitly allows unlimited levels.
@@ -58,13 +58,13 @@ Cards are the primary strategic building blocks. Their exact role is TBD: they m
 
 Current prototype card:
 
-- **Stageroo:** Rare, 4 Attack, 4 Health, 3 Cooldown. Start of combat: adjacent cards get +1 Attack.
-- **Badger:** Common, 1 Attack, 3 Health, 2 Cooldown. Tough 1 reduces damage received from each attack by 1.
-- **Warwick:** Uncommon, 2 Attack, 4 Health, 3 Cooldown. Lifesteal heals for half its attack damage.
-- **Peedie:** Common, 1 Attack, 1 Health, 1 Cooldown. Poison 1 gives its target +1 Poison on attack.
-- **Seraphina:** Rare, 2 Attack, 3 Health, 2 Cooldown. Poison 2. Survivalist prevents its first death, removes negative effects, and leaves it at 1 HP.
-- **Batteroo:** Common, 1 Attack, 1 Health, 1 Cooldown. Flying gives incoming attacks a 1-in-4 chance to miss.
-- **Nimble:** Epic, 4 Attack, 2 Health, 1 Cooldown. Every second attack gains temporary Attack equal to its permanent Attack for that attack.
+- **Stageroo:** Rare, 3 Cooldown. Tier 1: 4 Attack, 4 Health, adjacent allies get +1 Attack. Tier 2: 5 Attack, 6 Health. Tier 3: 6 Attack, 8 Health, all allies get +2 Attack instead.
+- **Badger:** Common, 2 Cooldown. Tier 1: 1 Attack, 3 Health, Tough 1. Tier 2: 2 Attack, 5 Health, Tough 1. Tier 3: 2 Attack, 7 Health, Tough 2.
+- **Warwick:** Uncommon, 3 Cooldown, Lifesteal. Tier 1: 2 Attack, 4 Health. Tier 2: 3 Attack, 5 Health. Tier 3: 4 Attack, 6 Health, gains Survivalist.
+- **Peedie:** Common, 2 Cooldown. Tier 1: 1 Attack, 1 Health, Poison 1. Tier 2: 2 Attack, 2 Health, Poison 1. Tier 3: 2 Attack, 4 Health, Poison 2.
+- **Seraphina:** Rare, 2 Cooldown, Survivalist. Tier 1: 2 Attack, 3 Health, Poison 2. Tier 2: 4 Attack, 5 Health, Poison 2. Tier 3: 5 Attack, 7 Health, Poison 4.
+- **Batteroo:** Common, 1 Cooldown, Flying. Tier 1: 1 Attack, 1 Health. Tier 2: 2 Attack, 2 Health. Tier 3: 4 Attack, 3 Health.
+- **Nimble:** Epic, 1 Cooldown. Tier 1: 4 Attack, 2 Health. Tier 2: 6 Attack, 4 Health, gains Overwhelm. Every second attack gains temporary Attack equal to its permanent Attack for that attack. Overwhelm splits excess lethal attack damage across adjacent enemies, with odd damage favoring the left.
 
 To define:
 
@@ -74,6 +74,14 @@ To define:
 - Acquisition and upgrade rules
 - Copy limits and rarity
 - When cards are played relative to automated combat
+
+## Shop and Collection
+
+- Pressing F2 transitions the prototype arena into its shop layout.
+- Cards may finish a drag only by entering an open arena slot or merging with a valid matching card.
+- Cards released elsewhere return to the player's card collection.
+- The persistent Cards button opens a two-column, scrollable view of collected cards. Collected cards can be dragged back into play.
+- Shop inventory, prices, currency, refresh rules, and purchase rules are TBD.
 
 ## Champions
 
@@ -117,6 +125,11 @@ The first playable target should prove one complete loop: configure a legal setu
 
 ## Change Log
 
+- 2026-07-05: Added the shop layout transition and persistent card collection for invalid card drops.
+- 2026-07-05: Capped Epic/Mythic cards at Tier 2 and added Nimble Tier 2 with Overwhelm.
+- 2026-07-05: Added Peedie, Seraphina, and Batteroo Tier 2–3 upgrades.
+- 2026-07-05: Added tier trait overrides plus Badger and Warwick Tier 2–3 upgrades.
+- 2026-07-05: Added reusable per-tier card overrides and Stageroo Tier 2–3 stats/effects.
 - 2026-07-05: Added same-card, same-tier merging through Tier 3 with card-slam feedback.
 - 2026-07-05: Added unlimited Poison levels, post-attack poison damage, and Peedie.
 - 2026-07-05: Added one-time Survivalist death prevention and Seraphina.

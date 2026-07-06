@@ -2,7 +2,7 @@ class_name BattleArena
 extends Control
 
 const TEAM_SIZE := 4
-const SLOT_SIZE := Vector2(200.0, 275.0)
+const SLOT_SIZE := CardMetrics.SIZE
 const ADJACENT_SLOT_MARGIN := 25.0
 const CENTER_MARGIN := 160.0
 const CARD_SLOT_SCENE := preload("res://game/battle/card_slot.tscn")
@@ -10,6 +10,8 @@ const CARD_SLOT_SCENE := preload("res://game/battle/card_slot.tscn")
 @onready var top_slots: HBoxContainer = %TopSlots
 @onready var bottom_slots: HBoxContainer = %BottomSlots
 @onready var combat: BattleCombat = $Combat
+
+var _shop_active := false
 
 
 func _ready() -> void:
@@ -20,6 +22,8 @@ func _ready() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	var key_event := event as InputEventKey
 	if not key_event or key_event.keycode != KEY_SPACE or not key_event.pressed or key_event.echo:
+		return
+	if _shop_active:
 		return
 	if combat.start_combat():
 		get_viewport().set_input_as_handled()
@@ -33,8 +37,8 @@ func _build_arena() -> void:
 
 	_configure_row(top_slots, Vector2.ZERO, row_width)
 	_configure_row(bottom_slots, Vector2(0.0, SLOT_SIZE.y + CENTER_MARGIN), row_width)
-	_create_slots(top_slots, "Top", CardSlot.TEAM_ENEMY)
-	_create_slots(bottom_slots, "Bottom", CardSlot.TEAM_PLAYER)
+	_configure_slots(top_slots, "Top", CardSlot.TEAM_ENEMY)
+	_configure_slots(bottom_slots, "Bottom", CardSlot.TEAM_PLAYER)
 	_center_arena()
 
 
@@ -49,16 +53,22 @@ func _configure_row(row: HBoxContainer, row_position: Vector2, row_width: float)
 	row.add_theme_constant_override("separation", int(ADJACENT_SLOT_MARGIN))
 
 
-func _create_slots(row: HBoxContainer, prefix: String, team: int) -> void:
-	for child in row.get_children():
-		child.queue_free()
-	for index in range(TEAM_SIZE):
+func _configure_slots(row: HBoxContainer, prefix: String, team: int) -> void:
+	var slots: Array[CardSlot] = _get_slots(row)
+	while slots.size() < TEAM_SIZE:
 		var slot := CARD_SLOT_SCENE.instantiate() as CardSlot
+		row.add_child(slot)
+		slots.append(slot)
+	while slots.size() > TEAM_SIZE:
+		var extra_slot: CardSlot = slots.pop_back()
+		row.remove_child(extra_slot)
+		extra_slot.queue_free()
+	for index in range(slots.size()):
+		var slot: CardSlot = slots[index]
 		slot.name = "%sSlot%d" % [prefix, index + 1]
 		slot.team = team
 		slot.slot_index = index
 		slot.custom_minimum_size = SLOT_SIZE
-		row.add_child(slot)
 
 
 func get_enemy_slots() -> Array[CardSlot]:
@@ -73,6 +83,10 @@ func get_all_slots() -> Array[CardSlot]:
 	var slots := get_player_slots()
 	slots.append_array(get_enemy_slots())
 	return slots
+
+
+func set_shop_active(active: bool) -> void:
+	_shop_active = active
 
 
 func _get_slots(row: HBoxContainer) -> Array[CardSlot]:
