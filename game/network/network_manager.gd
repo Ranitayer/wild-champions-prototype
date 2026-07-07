@@ -18,6 +18,7 @@ var remote_peer_id := 0
 var local_player_name := "Player"
 var remote_player_name := "Enemy"
 var _remote_shop_random := RandomNumberGenerator.new()
+var _remote_pity_misses_by_pack: Dictionary = {}
 
 
 func _ready() -> void:
@@ -52,6 +53,7 @@ func join(ip: String, port: int) -> Error:
 
 func disconnect_peer() -> void:
 	remote_peer_id = 0
+	_remote_pity_misses_by_pack.clear()
 	if multiplayer.multiplayer_peer:
 		multiplayer.multiplayer_peer.close()
 	multiplayer.multiplayer_peer = null
@@ -139,12 +141,23 @@ func _receive_booster_reward_request(request_id: int, pack_data_path: String, re
 	if not pack_data or pack_data.price != price or pack_data.reward_count != reward_count:
 		_send_booster_rewards.rpc_id(multiplayer.get_remote_sender_id(), request_id, [])
 		return
-	var rewards: Array[CardData] = pack_data.pick_rewards(reward_count, _remote_shop_random)
+	var rewards: Array[CardData] = _pick_remote_booster_rewards(pack_data, reward_count)
 	var reward_payload: Array[String] = []
 	for card in rewards:
 		if card and not card.resource_path.is_empty():
 			reward_payload.append(card.resource_path)
 	_send_booster_rewards.rpc_id(multiplayer.get_remote_sender_id(), request_id, reward_payload)
+
+
+func _pick_remote_booster_rewards(pack_data: BoosterPackData, reward_count: int) -> Array[CardData]:
+	var pack_key := pack_data.get_pack_key()
+	var pity_misses := int(_remote_pity_misses_by_pack.get(pack_key, 0))
+	var rewards: Array[CardData] = pack_data.pick_rewards(reward_count, _remote_shop_random, pity_misses)
+	if pack_data.has_high_rarity(rewards):
+		_remote_pity_misses_by_pack[pack_key] = 0
+	else:
+		_remote_pity_misses_by_pack[pack_key] = pity_misses + 1
+	return rewards
 
 
 @rpc("any_peer", "reliable")

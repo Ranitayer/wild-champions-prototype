@@ -1,0 +1,42 @@
+[gd_resource type="Resource" script_class="CardData" format=3 uid="uid://di3cir6buovhs"]
+
+[ext_resource type="Script" uid="uid://dsht6jxxa5f8m" path="res://game/cards/card_data.gd" id="1_data"]
+[ext_resource type="Script" uid="uid://buc18u4ppgb8o" path="res://game/cards/card_tier_override.gd" id="2_tier"]
+[ext_resource type="Script" uid="uid://c4ypf0m21awxk" path="res://game/cards/effects/death_enemy_team_damage_effect.gd" id="3_effect"]
+[ext_resource type="Texture2D" uid="uid://bt1auj4oexnid" path="res://assets/art/cards/shpark.png" id="4_art"]
+
+[sub_resource type="Resource" id="DeathDamage1_shpark"]
+script = ExtResource("3_effect")
+
+[sub_resource type="Resource" id="Tier2_shpark"]
+script = ExtResource("2_tier")
+attack = 3
+health = 4
+
+[sub_resource type="Resource" id="DeathHalfAttack_shpark"]
+script = ExtResource("3_effect")
+use_half_attack = true
+
+[sub_resource type="Resource" id="Tier3_shpark"]
+script = ExtResource("2_tier")
+tier = 3
+attack = 4
+health = 5
+description = "On death: Deal half Attack to all enemies."
+replace_effects = true
+effects = Array[Resource]([SubResource("DeathHalfAttack_shpark")])
+
+[resource]
+script = ExtResource("1_data")
+title = "SHPARK"
+description = "On death: Deal 1 damage to all enemies."
+art = ExtResource("4_art")
+art_scale = 1.6
+art_offset = Vector2(0, -8)
+rarity = 1
+tags = Array[StringName]([&"animal"])
+attack = 2
+health = 3
+cooldown = 2
+effects = Array[Resource]([SubResource("DeathDamage1_shpark")])
+tier_overrides = Array[Resource]([SubResource("Tier2_shpark"), SubResource("Tier3_shpark")])

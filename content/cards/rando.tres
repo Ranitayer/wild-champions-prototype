@@ -1,0 +1,44 @@
+[gd_resource type="Resource" script_class="CardData" format=3 uid="uid://b0qugqo65ae7x"]
+
+[ext_resource type="Script" uid="uid://dsht6jxxa5f8m" path="res://game/cards/card_data.gd" id="1_data"]
+[ext_resource type="Texture2D" uid="uid://bbkdcxs6tr6ao" path="res://assets/art/cards/rando.png" id="2_art"]
+[ext_resource type="Script" uid="uid://c1r62pfx7scdw" path="res://game/cards/effects/tag_allies_attack_health_buff_effect.gd" id="3_effect"]
+[ext_resource type="Script" uid="uid://buc18u4ppgb8o" path="res://game/cards/card_tier_override.gd" id="4_tier"]
+
+[sub_resource type="Resource" id="SpiderBuff1"]
+script = ExtResource("3_effect")
+target_tag = &"spider"
+
+[sub_resource type="Resource" id="Tier2"]
+script = ExtResource("4_tier")
+attack = 3
+health = 3
+
+[sub_resource type="Resource" id="SpiderBuff2"]
+script = ExtResource("3_effect")
+target_tag = &"spider"
+amount = 2
+
+[sub_resource type="Resource" id="Tier3"]
+script = ExtResource("4_tier")
+tier = 3
+attack = 4
+health = 4
+description = "Start of combat: Spider allies get +2 Attack and +2 Health."
+replace_effects = true
+effects = Array[Resource]([SubResource("SpiderBuff2")])
+
+[resource]
+script = ExtResource("1_data")
+title = "RANDO"
+description = "Start of combat: Spider allies get +1 Attack and +1 Health."
+art = ExtResource("2_art")
+art_scale = 1.2000000000000002
+art_offset = Vector2(0, -5)
+rarity = 1
+tags = Array[StringName]([&"spider"])
+attack = 2
+health = 2
+cooldown = 2
+effects = Array[Resource]([SubResource("SpiderBuff1")])
+tier_overrides = Array[Resource]([SubResource("Tier2"), SubResource("Tier3")])

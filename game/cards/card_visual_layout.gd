@@ -43,17 +43,18 @@ static func configure(card: CardVisual) -> void:
 	var temporary_attack_size: float = card.bottom_stat_size * card.temporary_attack_stat_scale
 	card.temporary_attack_stat.size = Vector2.ONE * temporary_attack_size
 	card.temporary_attack_stat.position = Vector2(
-		card.attack_stat.position.x + card.bottom_stat_size + card.temporary_attack_stat_margin,
-		card.attack_stat.position.y + (card.bottom_stat_size - temporary_attack_size) * 0.5
+		card.attack_stat.position.x + (card.bottom_stat_size - temporary_attack_size) * 0.5,
+		card.attack_stat.position.y - temporary_attack_size - card.temporary_attack_stat_margin
 	)
 	card.temporary_attack_stat.fill_color = CardStat.TEMPORARY_ATTACK_COLOR
 	var poison_size: float = card.bottom_stat_size * card.poison_stat_scale
 	card.poison_stat.size = Vector2.ONE * poison_size
 	card.poison_stat.position = Vector2(
-		card.health_stat.position.x - poison_size - card.poison_stat_margin,
-		card.health_stat.position.y + (card.bottom_stat_size - poison_size) * 0.5
+		card.health_stat.position.x + (card.bottom_stat_size - poison_size) * 0.5,
+		card.health_stat.position.y - poison_size - card.poison_stat_margin
 	)
 	card.poison_stat.fill_color = CardStat.POISON_COLOR
+	card._layout_tag_icons()
 
 	card.cooldown_stat.size = Vector2.ONE * card.cooldown_stat_size
 	card.cooldown_stat.position = card.cooldown_stat_position
@@ -94,16 +95,16 @@ static func apply_rarity(card: CardVisual, rarity: CardData.Rarity) -> void:
 static func fit_description_text(card: CardVisual) -> void:
 	var font: Font = card.description_label.get_theme_font("normal_font")
 	var plain_text: String = card._description_plain_text
-	var lines: int = max(1, plain_text.count("\n") + 1)
 	var smallest: int = mini(card.description_min_font_size, card.description_max_font_size)
 	var largest: int = maxi(card.description_min_font_size, card.description_max_font_size)
 	for font_size in range(largest, smallest - 1, -1):
-		var line_height: float = font.get_height(font_size)
-		var total_height: float = line_height * lines
-		var max_width: float = 0.0
-		for line in plain_text.split("\n"):
-			max_width = maxf(max_width, font.get_string_size(line, HORIZONTAL_ALIGNMENT_CENTER, -1.0, font_size).x)
-		if total_height <= card.description_label.size.y and max_width <= card.description_label.size.x:
+		var text_size: Vector2 = font.get_multiline_string_size(
+			plain_text,
+			HORIZONTAL_ALIGNMENT_CENTER,
+			card.description_label.size.x,
+			font_size
+		)
+		if text_size.y <= card.description_label.size.y:
 			card.description_label.add_theme_font_size_override("normal_font_size", font_size)
 			return
 	card.description_label.add_theme_font_size_override("normal_font_size", smallest)

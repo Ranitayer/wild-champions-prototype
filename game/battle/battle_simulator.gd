@@ -22,6 +22,9 @@ func run(cards: Array[BattleCardState], battle_seed: int = 0, favored_team: int 
 		tick_count += 1
 		if tick_count > MAX_TICKS:
 			break
+		_resolve_execute_attacks(cards, events)
+		if not (_team_alive(cards, TEAM_PLAYER) and _team_alive(cards, TEAM_ENEMY)):
+			break
 		var cooldowns: Dictionary = {}
 		var player_ready: Array[BattleCardState] = []
 		var enemy_ready: Array[BattleCardState] = []
@@ -80,6 +83,46 @@ func _resolve_next_ready(
 	return index
 
 
+func _resolve_execute_attacks(cards: Array[BattleCardState], events: Array[BattleEvent]) -> void:
+	for source in _ordered_cards(cards):
+		if not source.is_alive():
+			continue
+		var threshold := _get_execute_threshold(source)
+		if threshold <= 0:
+			continue
+		var target := _find_execute_target(source, cards, threshold)
+		if target:
+			_resolve_execute_attack(source, target, cards, events)
+
+
+func _resolve_execute_attack(
+	attacker: BattleCardState,
+	target: BattleCardState,
+	cards: Array[BattleCardState],
+	events: Array[BattleEvent]
+) -> void:
+	BattleEvent.add(events, BattleEvent.BEFORE_ATTACK, {
+		"attacker_id": attacker.card_id,
+		"target_id": target.card_id,
+	})
+	var damage := maxi(0, target.health)
+	target.health = 0
+	BattleEvent.add(events, BattleEvent.DAMAGE_APPLIED, {
+		"attacker_id": attacker.card_id,
+		"target_id": target.card_id,
+		"damage": damage,
+		"target_health": target.health,
+		"attacker_cooldown": attacker.cooldown,
+		"temporary_attack_remaining": attacker.get_temporary_attack(),
+		"flash_color": _get_execute_flash_color(attacker),
+		"effect_name": "Executed",
+		"effect_color": _get_execute_flash_color(attacker),
+	})
+	_apply_death_prevention(target, events)
+	if not target.is_alive():
+		_resolve_dead_card(target, cards, events)
+
+
 func _resolve_attack(attacker: BattleCardState, cards: Array[BattleCardState], events: Array[BattleEvent]) -> void:
 	if not attacker.is_alive():
 		return
@@ -111,6 +154,7 @@ func _resolve_attack(attacker: BattleCardState, cards: Array[BattleCardState], e
 	var target_health_before := target.health
 	var damage := target.modify_incoming_attack_damage(attacker.get_total_attack())
 	target.health -= damage
+	var extra_hits := _apply_adjacent_attack_damage(attacker, target, cards)
 	attacker.cooldown = maxi(1, attacker.data.cooldown)
 	var temporary_attack_remaining := attacker.consume_temporary_attack()
 	BattleEvent.add(events, BattleEvent.DAMAGE_APPLIED, {
@@ -120,8 +164,17 @@ func _resolve_attack(attacker: BattleCardState, cards: Array[BattleCardState], e
 		"target_health": target.health,
 		"attacker_cooldown": attacker.cooldown,
 		"temporary_attack_remaining": temporary_attack_remaining,
+		"extra_hits": extra_hits,
 	})
 	_apply_death_prevention(target, events)
+	_apply_death_prevention_for_hits(extra_hits, cards, events)
+	_apply_return_attack_damage(target, attacker, cards, events)
+	if target.is_alive():
+		_apply_after_attacked_effects(attacker, target, damage, cards, events)
+	if not attacker.is_alive():
+		if not target.is_alive():
+			_resolve_dead_card(target, cards, events)
+		return
 	var overflow_damage := attacker.get_attack_overflow_damage(
 		damage,
 		target_health_before,
@@ -171,7 +224,67 @@ func _resolve_attack(attacker: BattleCardState, cards: Array[BattleCardState], e
 			"target_health": attacker.health,
 		})
 	if not target.is_alive():
-		BattleEvent.add(events, BattleEvent.CARD_DIED, {"card_id": target.card_id})
+		_resolve_dead_card(target, cards, events)
+
+
+func _apply_adjacent_attack_damage(
+	source: BattleCardState,
+	target: BattleCardState,
+	cards: Array[BattleCardState]
+) -> Array[BattleEffectHit]:
+	var amount := _get_adjacent_attack_damage(source, target, cards)
+	var hits: Array[BattleEffectHit] = []
+	if amount <= 0:
+		return hits
+	for slot_offset in [-1, 1]:
+		var adjacent := _find_living_card_at(cards, target.team, target.slot_index + slot_offset)
+		if not adjacent:
+			continue
+		adjacent.health -= amount
+		hits.append(BattleEffectHit.new(adjacent.card_id, amount, adjacent.health))
+	return hits
+
+
+func _get_adjacent_attack_damage(
+	source: BattleCardState,
+	target: BattleCardState,
+	cards: Array[BattleCardState]
+) -> int:
+	var result := 0
+	for effect_resource in source.get_effects():
+		var effect := effect_resource as CardEffect
+		if effect:
+			result += effect.get_adjacent_attack_damage(source, target, cards)
+	return maxi(0, result)
+
+
+func _apply_death_prevention_for_hits(
+	hits: Array[BattleEffectHit],
+	cards: Array[BattleCardState],
+	events: Array[BattleEvent]
+) -> void:
+	for hit in hits:
+		var card := _find_card_by_id(cards, hit.target_id)
+		if not card:
+			continue
+		_apply_death_prevention(card, events)
+		if not card.is_alive():
+			_resolve_dead_card(card, cards, events)
+
+
+func _apply_return_attack_damage(
+	source: BattleCardState,
+	target: BattleCardState,
+	cards: Array[BattleCardState],
+	events: Array[BattleEvent]
+) -> void:
+	var amount := source.get_return_attack_damage()
+	if amount <= 0 or not target.is_alive():
+		return
+	var targets: Array[BattleCardState] = [target]
+	var damage_amounts: Array[int] = [amount]
+	var effect_color := source.get_return_attack_color_hex()
+	_deal_grouped_effect_damage(source, targets, damage_amounts, cards, events, effect_color, "Thorns", effect_color)
 
 
 func _apply_death_prevention(card: BattleCardState, events: Array[BattleEvent]) -> void:
@@ -185,6 +298,28 @@ func _apply_death_prevention(card: BattleCardState, events: Array[BattleEvent]) 
 		"target_health": card.health,
 		"poison_remaining": card.poison,
 	})
+
+
+func _resolve_dead_card(
+	card: BattleCardState,
+	cards: Array[BattleCardState],
+	events: Array[BattleEvent]
+) -> void:
+	if card.is_alive() or card.death_resolved:
+		return
+	card.death_resolved = true
+	_apply_on_death_effects(card, cards, events)
+	_resolve_pending_deaths(cards, events)
+	BattleEvent.add(events, BattleEvent.CARD_DIED, {"card_id": card.card_id})
+
+
+func _resolve_pending_deaths(cards: Array[BattleCardState], events: Array[BattleEvent]) -> void:
+	for card in cards:
+		if card.is_alive() or card.death_resolved:
+			continue
+		_apply_death_prevention(card, events)
+		if not card.is_alive():
+			_resolve_dead_card(card, cards, events)
 
 
 func _apply_overflow_damage(
@@ -215,7 +350,7 @@ func _apply_overflow_damage(
 	elif right_target:
 		targets.append(right_target)
 		damage_amounts.append(amount)
-	_deal_grouped_effect_damage(source, targets, damage_amounts, events)
+	_deal_grouped_effect_damage(source, targets, damage_amounts, cards, events)
 
 
 func _has_living_adjacent(target: BattleCardState, cards: Array[BattleCardState]) -> bool:
@@ -229,7 +364,11 @@ func _deal_grouped_effect_damage(
 	source: BattleCardState,
 	targets: Array[BattleCardState],
 	damage_amounts: Array[int],
-	events: Array[BattleEvent]
+	cards: Array[BattleCardState],
+	events: Array[BattleEvent],
+	flash_color: String = "",
+	effect_name: String = "",
+	effect_color: String = ""
 ) -> void:
 	var hits: Array[BattleEffectHit] = []
 	for index in targets.size():
@@ -241,14 +380,20 @@ func _deal_grouped_effect_damage(
 		hits.append(BattleEffectHit.new(target.card_id, amount, target.health))
 	if hits.is_empty():
 		return
-	BattleEvent.add(events, BattleEvent.EFFECT_DAMAGE_GROUP, {
+	var event_data: Dictionary = {
 		"source_id": source.card_id,
 		"hits": hits,
-	})
+	}
+	if not flash_color.is_empty():
+		event_data["flash_color"] = flash_color
+	if not effect_name.is_empty():
+		event_data["effect_name"] = effect_name
+		event_data["effect_color"] = effect_color
+	BattleEvent.add(events, BattleEvent.EFFECT_DAMAGE_GROUP, event_data)
 	for target in targets:
 		_apply_death_prevention(target, events)
 		if not target.is_alive():
-			BattleEvent.add(events, BattleEvent.CARD_DIED, {"card_id": target.card_id})
+			_resolve_dead_card(target, cards, events)
 
 
 func _find_living_card_at(
@@ -258,6 +403,48 @@ func _find_living_card_at(
 ) -> BattleCardState:
 	for card in cards:
 		if card.team == team and card.slot_index == slot_index and card.is_alive():
+			return card
+	return null
+
+
+func _get_execute_threshold(source: BattleCardState) -> int:
+	var result := 0
+	for effect_resource in source.get_effects():
+		var effect := effect_resource as CardEffect
+		if effect:
+			result = maxi(result, effect.get_execute_health_threshold(source))
+	return result
+
+
+func _get_execute_flash_color(source: BattleCardState) -> String:
+	for effect_resource in source.get_effects():
+		var execute_effect := effect_resource as ExecuteLowHealthEffect
+		if execute_effect:
+			return execute_effect.get_flash_color_hex()
+	return "ab1010"
+
+
+func _find_execute_target(
+	source: BattleCardState,
+	cards: Array[BattleCardState],
+	threshold: int
+) -> BattleCardState:
+	var target: BattleCardState = null
+	for card in cards:
+		if card.team == source.team or not card.is_alive() or card.health > threshold:
+			continue
+		if (
+			target == null
+			or card.health < target.health
+			or (card.health == target.health and card.slot_index < target.slot_index)
+		):
+			target = card
+	return target
+
+
+func _find_card_by_id(cards: Array[BattleCardState], card_id: int) -> BattleCardState:
+	for card in cards:
+		if card.card_id == card_id:
 			return card
 	return null
 
@@ -280,6 +467,30 @@ func _apply_before_attack_effects(
 		var effect := effect_resource as CardEffect
 		if effect:
 			effect.apply_before_attack(source, target, cards, events)
+
+
+func _apply_after_attacked_effects(
+	source: BattleCardState,
+	target: BattleCardState,
+	damage: int,
+	cards: Array[BattleCardState],
+	events: Array[BattleEvent]
+) -> void:
+	for effect_resource in target.get_effects():
+		var effect := effect_resource as CardEffect
+		if effect:
+			effect.apply_after_attacked(source, target, damage, cards, events)
+
+
+func _apply_on_death_effects(
+	source: BattleCardState,
+	cards: Array[BattleCardState],
+	events: Array[BattleEvent]
+) -> void:
+	for effect_resource in source.get_effects():
+		var effect := effect_resource as CardEffect
+		if effect:
+			effect.apply_on_death(source, cards, events)
 
 
 func _find_target(attacker: BattleCardState, cards: Array[BattleCardState]) -> BattleCardState:

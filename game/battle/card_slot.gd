@@ -37,7 +37,6 @@ func occupy(card: CardVisual) -> void:
 	occupying_card = card
 	if occupying_card:
 		occupying_card.set_current_slot(self)
-	self_modulate = Color(1.0, 1.0, 1.0, 0.0)
 
 
 func release(card: CardVisual) -> void:
@@ -45,7 +44,6 @@ func release(card: CardVisual) -> void:
 		occupying_card = null
 		if card.get_current_slot() == self:
 			card.set_current_slot(null)
-		self_modulate = Color.WHITE
 
 
 func has_card() -> bool:
@@ -68,8 +66,6 @@ func _clear_stale_occupant() -> void:
 		return
 	if not is_instance_valid(occupying_card):
 		occupying_card = null
-		self_modulate = Color.WHITE
 		return
 	if occupying_card.get_current_slot() != self:
 		occupying_card = null
-		self_modulate = Color.WHITE

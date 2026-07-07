@@ -1,0 +1,48 @@
+[gd_resource type="Resource" script_class="CardData" format=3 uid="uid://bhruh3wa1qujl"]
+
+[ext_resource type="Script" uid="uid://dsht6jxxa5f8m" path="res://game/cards/card_data.gd" id="1_data"]
+[ext_resource type="Texture2D" uid="uid://c6xsm4moko2gw" path="res://assets/art/cards/creg.png" id="2_art"]
+[ext_resource type="Script" uid="uid://csy4m5s7t1w1w" path="res://game/cards/effects/death_adjacent_ally_health_buff_effect.gd" id="3_death_buff"]
+[ext_resource type="Script" uid="uid://buc18u4ppgb8o" path="res://game/cards/card_tier_override.gd" id="4_tier"]
+
+[sub_resource type="Resource" id="DeathBuff1"]
+script = ExtResource("3_death_buff")
+
+[sub_resource type="Resource" id="DeathBuff2"]
+script = ExtResource("3_death_buff")
+amount = 2
+
+[sub_resource type="Resource" id="Tier2"]
+script = ExtResource("4_tier")
+attack = 2
+health = 3
+description = "On death: Adjacent allies get +2 Health."
+replace_effects = true
+effects = Array[Resource]([SubResource("DeathBuff2")])
+
+[sub_resource type="Resource" id="DeathBuff3"]
+script = ExtResource("3_death_buff")
+amount = 3
+
+[sub_resource type="Resource" id="Tier3"]
+script = ExtResource("4_tier")
+tier = 3
+attack = 2
+health = 4
+description = "On death: Adjacent allies get +3 Health."
+replace_effects = true
+effects = Array[Resource]([SubResource("DeathBuff3")])
+
+[resource]
+script = ExtResource("1_data")
+title = "CREG"
+description = "On death: Adjacent allies get +1 Health."
+art = ExtResource("2_art")
+art_scale = 1.6
+art_offset = Vector2(0, 5)
+tags = Array[StringName]([&"animal"])
+attack = 1
+health = 2
+cooldown = 2
+effects = Array[Resource]([SubResource("DeathBuff1")])
+tier_overrides = Array[Resource]([SubResource("Tier2"), SubResource("Tier3")])

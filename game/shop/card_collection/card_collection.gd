@@ -39,7 +39,7 @@ const DARK_COLOR := Color("151d28")
 var _entries: Array[CardCollectionEntry] = []
 var _active_drags: Dictionary = {}
 var _pending_merges: Dictionary = {}
-var _collecting: Dictionary = {}
+var _collecting_card_ids: Array[int] = []
 var _next_entry_id := 1
 var _panel_animating := false
 var _reorganize_revision := 0
@@ -123,18 +123,18 @@ func collect_card(card: CardVisual) -> void:
 	if not is_instance_valid(card) or not card.card_data:
 		return
 	var instance_id := card.get_instance_id()
-	if _collecting.has(instance_id):
+	if _collecting_card_ids.has(instance_id):
 		return
-	_collecting[instance_id] = true
-	var active_drag: Dictionary = _active_drags.get(instance_id, {})
-	if not active_drag.is_empty():
+	_collecting_card_ids.append(instance_id)
+	var active_drag := _get_active_drag(instance_id)
+	if active_drag:
 		await _return_to_ghost(card, active_drag)
-		_collecting.erase(instance_id)
+		_collecting_card_ids.erase(instance_id)
 		return
 	var data := card.card_data
 	var tier := card.get_card_tier()
 	await animator.play(card, cards_button.get_global_rect().get_center())
-	_collecting.erase(instance_id)
+	_collecting_card_ids.erase(instance_id)
 	if is_instance_valid(card):
 		card.queue_free()
 	_add_entry(data, tier)
@@ -149,10 +149,10 @@ func set_choice_locked(locked: bool) -> void:
 		await _close_panel()
 
 
-func _return_to_ghost(card: CardVisual, active_drag: Dictionary) -> void:
-	var ghost := instance_from_id(int(active_drag.get("ghost_id", 0))) as Control
+func _return_to_ghost(card: CardVisual, active_drag: CardCollectionDragState) -> void:
+	var ghost := active_drag.get_ghost()
 	if not ghost:
-		var fallback_entry: CardCollectionEntry = active_drag["entry"] as CardCollectionEntry
+		var fallback_entry: CardCollectionEntry = active_drag.entry
 		_remove_active_drag(card.get_instance_id())
 		_entries.append(fallback_entry)
 		card.queue_free()
@@ -171,7 +171,7 @@ func _return_to_ghost(card: CardVisual, active_drag: Dictionary) -> void:
 	await tween.finished
 	if not is_instance_valid(card) or not is_instance_valid(ghost):
 		return
-	var entry: CardCollectionEntry = active_drag["entry"] as CardCollectionEntry
+	var entry: CardCollectionEntry = active_drag.entry
 	var grid_index := ghost.get_index()
 	ghost.get_parent().remove_child(ghost)
 	ghost.queue_free()
@@ -297,10 +297,10 @@ func _on_preview_drag_started(card: CardVisual, entry_id: int) -> void:
 	var grid_index := card.get_index()
 	cards_grid.add_child(ghost)
 	cards_grid.move_child(ghost, grid_index)
-	_active_drags[card.get_instance_id()] = {
-		"entry": entry.duplicate_entry(),
-		"ghost_id": ghost.get_instance_id(),
-	}
+	_active_drags[card.get_instance_id()] = CardCollectionDragState.new(
+		entry.duplicate_entry(),
+		ghost.get_instance_id()
+	)
 	_remove_entry(entry_id)
 	_restore_world_hover(card)
 	card.remove_meta("collection_entry_id")
@@ -350,8 +350,7 @@ func _on_preview_tier_changed(_card: CardVisual, tier: int, entry_id: int) -> vo
 
 
 func _finalize_departure(card_instance_id: int) -> void:
-	var active_drag: Dictionary = _active_drags.get(card_instance_id, {})
-	if active_drag.is_empty():
+	if not _get_active_drag(card_instance_id):
 		return
 	_remove_active_drag(card_instance_id)
 
@@ -362,15 +361,19 @@ func forget_dragged_card(card: CardVisual) -> void:
 
 
 func _remove_active_drag(card_instance_id: int) -> void:
-	var active_drag: Dictionary = _active_drags.get(card_instance_id, {})
-	if active_drag.is_empty():
+	var active_drag := _get_active_drag(card_instance_id)
+	if not active_drag:
 		return
-	var ghost := instance_from_id(int(active_drag.get("ghost_id", 0))) as Control
+	var ghost := active_drag.get_ghost()
 	if ghost:
 		if ghost.get_parent():
 			ghost.get_parent().remove_child(ghost)
 		ghost.queue_free()
 	_active_drags.erase(card_instance_id)
+
+
+func _get_active_drag(card_instance_id: int) -> CardCollectionDragState:
+	return _active_drags.get(card_instance_id) as CardCollectionDragState
 
 
 func _restore_world_hover(card: CardVisual) -> void:

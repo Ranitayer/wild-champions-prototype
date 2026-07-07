@@ -8,6 +8,8 @@
 
 [sub_resource type="Resource" id="AdjacentAttackBuff_stageroo"]
 script = ExtResource("3_effect")
+bonus_tag = &"animal"
+bonus_amount = 1
 
 [sub_resource type="Resource" id="Tier2_stageroo"]
 script = ExtResource("4_tier")
@@ -17,20 +19,22 @@ health = 6
 [sub_resource type="Resource" id="AllAlliesAttackBuff_stageroo"]
 script = ExtResource("5_allies")
 amount = 2
+bonus_tag = &"animal"
+bonus_amount = 1
 
 [sub_resource type="Resource" id="Tier3_stageroo"]
 script = ExtResource("4_tier")
 tier = 3
 attack = 6
 health = 8
-description = "Start of combat: All allies get +2 Attack."
+description = "Start of combat: All allies get +2 Attack. Animals get +3."
 replace_effects = true
 effects = Array[Resource]([SubResource("AllAlliesAttackBuff_stageroo")])
 
 [resource]
 script = ExtResource("1_data")
 title = "STAGEROO"
-description = "Start of combat: Adjacent cards get +1 Attack."
+description = "Start of combat: Adjacent cards get +1 Attack. Animals get +2."
 art = ExtResource("2_art")
 rarity = 2
 tags = Array[StringName]([&"animal"])

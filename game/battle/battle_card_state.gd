@@ -11,6 +11,7 @@ var health: int
 var cooldown: int
 var poison: int
 var attacks_made: int
+var death_resolved := false
 var traits: Array[BattleTraitState] = []
 var temporary_attacks: Array[BattleTemporaryAttack] = []
 
@@ -69,6 +70,20 @@ func get_outgoing_poison_amount() -> int:
 	return maxi(0, result)
 
 
+func get_return_attack_damage() -> int:
+	var result := 0
+	for trait_state in traits:
+		result += trait_state.definition.get_return_attack_damage(trait_state.value)
+	return maxi(0, result)
+
+
+func get_return_attack_color_hex() -> String:
+	for trait_state in traits:
+		if trait_state.definition.get_return_attack_damage(trait_state.value) > 0:
+			return trait_state.definition.get_trigger_color_hex()
+	return ""
+
+
 func get_total_attack() -> int:
 	return attack + get_temporary_attack()
 
@@ -76,6 +91,11 @@ func get_total_attack() -> int:
 func add_permanent_attack(amount: int) -> int:
 	attack += amount
 	return attack
+
+
+func add_permanent_health(amount: int) -> int:
+	health += amount
+	return health
 
 
 func get_temporary_attack() -> int:

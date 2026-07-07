@@ -19,6 +19,8 @@ func apply_before_attack(
 		"target_id": source.card_id,
 		"amount": amount,
 		"result": result,
+		"effect_name": "2x Damage",
+		"effect_color": "de9e41",
 	})
 
 

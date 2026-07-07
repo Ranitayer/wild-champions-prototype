@@ -139,6 +139,9 @@ func _get_reward_positions(count: int) -> Array[Vector2]:
 func _get_rewards(data: BoosterPackData) -> Array[CardData]:
 	if _network_manager and _network_manager.is_connected_to_peer() and not _network_manager.is_host():
 		return await _request_host_rewards(data)
+	var shop_random: ShopRandom = get_tree().get_first_node_in_group("shop_random") as ShopRandom
+	if shop_random:
+		return shop_random.pick_booster_rewards(data, data.reward_count)
 	return data.pick_rewards(data.reward_count, _get_random_generator())
 
 

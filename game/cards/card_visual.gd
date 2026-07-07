@@ -21,6 +21,10 @@ const COMBAT_Z_INDEX := 2048
 const TOOLTIP_CANVAS_LAYER := 102
 const CARD_TRAIT_TOOLTIP := preload("res://game/ui/card_trait_tooltip/card_trait_tooltip.gd")
 const STAT_SCENE := preload("res://game/cards/stat_circle.tscn")
+const TAG_ICON_SCRIPT := preload("res://game/cards/card_tag_icon.gd")
+const LIQUID_OUTLINE_SHADER := preload("res://game/effects/shaders/liquid_outline.gdshader")
+const DEATH_BURN_SHADER := preload("res://game/cards/shaders/card_death_burn.gdshader")
+const TAG_ICON_DIR := "res://assets/icons/tags"
 const TIER_INDICATOR_DEFAULT_TOP_MARGIN := 12.0
 const TIER_INDICATOR_WITH_PRICE_TOP_MARGIN := 52.0
 const RARITY_BOTTOM_COLORS := [
@@ -63,6 +67,51 @@ const RARITY_TOP_COLORS := [
 @export_range(0.1, 2.0, 0.05) var survival_sway_duration := 0.5
 @export_range(0.0, 20.0, 0.5) var survival_rotation_degrees := 6.0
 @export_range(1.0, 1.5, 0.01) var survival_pop_scale := 1.08
+
+@export_group("Death Effect Feedback")
+@export_range(0.1, 2.0, 0.05) var death_effect_windup_duration := 0.6
+@export_range(0.0, 3.0, 0.05) var death_effect_hold_duration := 1.0
+@export_range(1.0, 1.5, 0.01) var death_effect_scale := 1.2
+@export_range(0.0, 80.0, 1.0) var death_effect_lift := 28.0
+@export_range(-20.0, 20.0, 0.5) var death_effect_rotation_degrees := 5.0
+
+@export_group("Death Animation")
+@export_range(0.1, 2.0, 0.05) var death_animation_duration := 1.0
+@export_range(0.0, 120.0, 1.0) var death_animation_distance := 44.0
+@export_range(1.0, 1.3, 0.01) var death_animation_scale := 1.08
+@export_range(-30.0, 30.0, 0.5) var death_animation_rotation_degrees := 8.0
+
+@export_group("Death Burn Shader")
+@export var death_burn_color: Color = TRAIT_COLOR
+@export_range(0.0, 1.0, 0.01) var death_burn_size := 0.08
+@export_range(0.0, 0.2, 0.001) var death_burn_edge_softness := 0.025
+@export_range(0.0, 1.0, 0.01) var death_burn_noise_strength := 0.28
+@export_range(0.1, 8.0, 0.1) var death_burn_noise_scale := 1.8
+@export_range(-1.0, 1.0, 1.0) var death_burn_direction := 1.0
+@export_group("")
+
+@export_group("Tag Icons")
+@export_range(0.2, 1.0, 0.05) var tag_circle_scale := 0.7
+@export_range(0.0, 20.0, 1.0) var tag_circle_gap := 4.0
+@export_range(0.0, 30.0, 1.0) var tag_circle_bottom_margin := 0.0
+@export_range(0.0, 20.0, 1.0) var tag_icon_margin := 7.0
+@export_range(1.0, 6.0, 1.0) var tag_circle_outline_width := 2.0
+@export_group("")
+
+@export_group("Drag Outline")
+@export var merge_outline_color := Color("20ed36")
+@export var valid_drop_outline_color := Color("81e9e5")
+@export_range(0.0, 20.0, 0.5) var merge_outline_width := 6.0
+@export_range(0.0, 4.0, 0.05) var merge_outline_edge_feather := 0.25
+@export_range(0.0, 20.0, 0.5) var merge_outline_liquid_amplitude := 3.0
+@export_range(1.0, 40.0, 0.5) var merge_outline_liquid_frequency := 12.0
+@export_range(0.0, 10.0, 0.1) var merge_outline_liquid_speed := 2.0
+@export_range(0.0, 24.0, 0.5) var merge_outline_padding := 12.0
+@export_range(0.0, 30.0, 0.5) var merge_outline_corner_radius := 9.0
+@export_range(0.01, 0.5, 0.01) var merge_outline_show_duration := 0.12
+@export_range(0.01, 0.5, 0.01) var merge_outline_hide_duration := 0.1
+@export_range(0.5, 1.0, 0.01) var merge_outline_spawn_scale := 0.88
+@export_group("")
 
 var hit_shake_distance := 6.0
 var hit_shake_count := 3
@@ -134,6 +183,9 @@ var _sway_tween: Tween
 var _flash_tween: Tween
 var _buff_tween: Tween
 var _hit_flash_material: ShaderMaterial
+var _death_burn_material: ShaderMaterial
+var _death_animation_active := false
+var _death_animation_done := false
 var _hovered := false
 var _dragging := false
 var _snapping := false
@@ -158,8 +210,15 @@ var _drag_guard: Callable
 var _card_tier := 1
 var _sell_price_stat: StatCircle
 var _editor_preview_signature := ""
+var _tag_circles: Array[Control] = []
+var _merge_outline_material: ShaderMaterial
+var _merge_outline_rect: ColorRect
+var _merge_outline_tween: Tween
+var _merge_outline_visible := false
+var _effect_outline_locked := false
 
 static var _last_hover_z_index := 0
+static var _tag_icon_cache: Dictionary = {}
 
 
 func _enter_tree() -> void:
@@ -170,6 +229,8 @@ func _enter_tree() -> void:
 
 func _ready() -> void:
 	_configure_feedback_materials()
+	visual_group.fit_margin = bottom_stat_size + cooldown_stat_size
+	_ensure_tag_icons()
 	_configure_layout()
 	_apply_data()
 	if Engine.is_editor_hint():
@@ -192,6 +253,10 @@ func _process(delta: float) -> void:
 	_update_hover_state()
 	_update_trait_tooltip_visibility()
 	_update_trait_tooltip_position()
+	if _dragging:
+		_update_merge_outline_target()
+	elif not _effect_outline_locked:
+		_clear_merge_outline_target()
 	if not _dragging or _pickup_sway_active:
 		return
 	var response := 1.0 - exp(-drag_sway_response * delta)
@@ -285,6 +350,9 @@ func _contains_visual_point(point: Vector2) -> bool:
 		var control := node as Control
 		if control.get_global_rect().has_point(point):
 			return true
+	for circle in _tag_circles:
+		if circle.visible and circle.get_global_rect().has_point(point):
+			return true
 	for control in _extra_hover_controls:
 		if is_instance_valid(control) and control.get_global_rect().has_point(point):
 			return true
@@ -307,7 +375,6 @@ func show_sell_price(price: int, fill_color: Color) -> void:
 		_sell_price_stat = STAT_SCENE.instantiate() as StatCircle
 		_sell_price_stat.size = Vector2.ONE * cooldown_stat_size
 		_sell_price_stat.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		_sell_price_stat.z_index = 100
 		card_surface.add_child(_sell_price_stat)
 	add_hover_control(_sell_price_stat)
 	_sell_price_stat.value = price
@@ -322,6 +389,204 @@ func hide_sell_price() -> void:
 		remove_hover_control(_sell_price_stat)
 		_sell_price_stat.hide()
 		tier_indicator.top_margin = TIER_INDICATOR_DEFAULT_TOP_MARGIN
+
+
+func _ensure_tag_icons() -> void:
+	var clean_tags: Array[Control] = []
+	for node in _tag_circles:
+		if node == null:
+			continue
+		if not (node is CardTagIcon):
+			node.queue_free()
+			continue
+		clean_tags.append(node)
+	_tag_circles = clean_tags
+	while _tag_circles.size() < 2:
+		var circle: CardTagIcon = TAG_ICON_SCRIPT.new() as CardTagIcon
+		circle.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		card_surface.add_child(circle)
+		_tag_circles.append(circle)
+
+
+func _layout_tag_icons() -> void:
+	if _tag_circles.is_empty():
+		return
+	var circle_size: float = bottom_stat_size * tag_circle_scale
+	var visible_count: int = 0
+	for circle in _tag_circles:
+		if circle.visible:
+			visible_count += 1
+	if visible_count == 0:
+		visible_count = _tag_circles.size()
+	var total_width: float = circle_size * visible_count + tag_circle_gap * max(0, visible_count - 1)
+	var start_x: float = (card_size.x - total_width) * 0.5
+	var y: float = card_size.y - circle_size - tag_circle_bottom_margin - OUTLINE_WIDTH
+	var visible_index: int = 0
+	for index in range(_tag_circles.size()):
+		var circle: CardTagIcon = _tag_circles[index] as CardTagIcon
+		if circle == null:
+			continue
+		if not circle.visible and visible_count != _tag_circles.size():
+			continue
+		circle.size = Vector2.ONE * circle_size
+		circle.position = Vector2(start_x + visible_index * (circle_size + tag_circle_gap), y)
+		circle.icon_margin = tag_icon_margin
+		circle.outline_width = tag_circle_outline_width
+		visible_index += 1
+
+
+func _apply_tags(data: CardData) -> void:
+	_ensure_tag_icons()
+	var icon_index: int = 0
+	for tag in data.tags:
+		if icon_index >= _tag_circles.size():
+			break
+		var texture: Texture2D = _get_tag_icon(tag)
+		if not texture:
+			continue
+		var circle: CardTagIcon = _tag_circles[icon_index] as CardTagIcon
+		if circle == null:
+			continue
+		circle.icon_texture = texture
+		circle.show()
+		icon_index += 1
+	for index in range(icon_index, _tag_circles.size()):
+		var circle: CardTagIcon = _tag_circles[index] as CardTagIcon
+		if circle == null:
+			continue
+		circle.icon_texture = null
+		circle.hide()
+	_layout_tag_icons()
+
+
+func _update_merge_outline_target() -> void:
+	var target: CardVisual = _find_merge_target()
+	if target != null and _should_show_merge_outline_for(target):
+		_show_merge_outline(merge_outline_color)
+		return
+	if _is_over_valid_drop_destination():
+		_show_merge_outline(valid_drop_outline_color)
+		return
+	_clear_merge_outline_target()
+
+
+func _clear_merge_outline_target() -> void:
+	_hide_merge_outline()
+
+
+func show_effect_outline(outline_color: Color, show_duration: float) -> void:
+	_effect_outline_locked = true
+	_show_merge_outline(outline_color, show_duration)
+
+
+func clear_effect_outline() -> void:
+	_effect_outline_locked = false
+	_hide_merge_outline()
+
+
+func _should_show_merge_outline_for(target: CardVisual) -> bool:
+	return not target.has_meta("collection_entry_id")
+
+
+func _show_merge_outline(outline_color: Color, show_duration: float = -1.0) -> void:
+	_ensure_merge_outline()
+	if _merge_outline_rect == null or _merge_outline_material == null:
+		return
+	var was_visible: bool = _merge_outline_visible
+	var padding: float = maxf(0.0, merge_outline_padding)
+	var canvas_size: Vector2 = card_size + Vector2.ONE * padding * 2.0
+	_merge_outline_rect.position = -Vector2.ONE * padding
+	_merge_outline_rect.size = canvas_size
+	_merge_outline_rect.pivot_offset = canvas_size * 0.5
+	_apply_merge_outline_parameters(_merge_outline_material, canvas_size, outline_color)
+	if was_visible and _merge_outline_rect.visible:
+		return
+	_merge_outline_visible = true
+	_kill_merge_outline_tween()
+	if not _merge_outline_rect.visible:
+		_merge_outline_rect.scale = Vector2.ONE * merge_outline_spawn_scale
+		_merge_outline_rect.modulate.a = 0.0
+		_merge_outline_rect.show()
+	var duration: float = merge_outline_show_duration if show_duration < 0.0 else show_duration
+	_merge_outline_tween = create_tween().set_parallel(true)
+	_merge_outline_tween.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_merge_outline_tween.tween_property(_merge_outline_rect, "scale", Vector2.ONE, duration)
+	_merge_outline_tween.tween_property(_merge_outline_rect, "modulate:a", 1.0, duration)
+	_merge_outline_tween.finished.connect(_on_merge_outline_show_finished)
+
+
+func _ensure_merge_outline() -> void:
+	if _merge_outline_rect:
+		return
+	_merge_outline_material = ShaderMaterial.new()
+	_merge_outline_material.shader = LIQUID_OUTLINE_SHADER
+	_merge_outline_rect = ColorRect.new()
+	_merge_outline_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_merge_outline_rect.color = Color.WHITE
+	_merge_outline_rect.show_behind_parent = true
+	_merge_outline_rect.z_index = -1
+	_merge_outline_rect.material = _merge_outline_material
+	card_surface.add_child(_merge_outline_rect)
+	_merge_outline_rect.hide()
+
+
+func _hide_merge_outline() -> void:
+	if _merge_outline_rect == null or not _merge_outline_visible:
+		return
+	_merge_outline_visible = false
+	_kill_merge_outline_tween()
+	_merge_outline_tween = create_tween().set_parallel(true)
+	_merge_outline_tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	_merge_outline_tween.tween_property(
+		_merge_outline_rect,
+		"scale",
+		Vector2.ONE * merge_outline_spawn_scale,
+		merge_outline_hide_duration
+	)
+	_merge_outline_tween.tween_property(_merge_outline_rect, "modulate:a", 0.0, merge_outline_hide_duration)
+	_merge_outline_tween.finished.connect(_on_merge_outline_hide_finished)
+
+
+func _kill_merge_outline_tween() -> void:
+	if _merge_outline_tween == null:
+		return
+	_merge_outline_tween.kill()
+	_merge_outline_tween = null
+
+
+func _on_merge_outline_show_finished() -> void:
+	if _merge_outline_visible:
+		_merge_outline_tween = null
+
+
+func _on_merge_outline_hide_finished() -> void:
+	if _merge_outline_visible or _merge_outline_rect == null:
+		return
+	_merge_outline_rect.hide()
+	_merge_outline_rect.scale = Vector2.ONE
+	_merge_outline_rect.modulate.a = 1.0
+	_merge_outline_tween = null
+
+
+func _apply_merge_outline_parameters(shader_material: ShaderMaterial, canvas_size: Vector2, outline_color: Color) -> void:
+	shader_material.set_shader_parameter("canvas_size", canvas_size)
+	shader_material.set_shader_parameter("card_size", card_size)
+	shader_material.set_shader_parameter("outline_color", outline_color)
+	shader_material.set_shader_parameter("corner_radius", merge_outline_corner_radius)
+	shader_material.set_shader_parameter("outline_width", merge_outline_width)
+	shader_material.set_shader_parameter("edge_feather", merge_outline_edge_feather)
+	shader_material.set_shader_parameter("liquid_amplitude", merge_outline_liquid_amplitude)
+	shader_material.set_shader_parameter("liquid_frequency", merge_outline_liquid_frequency)
+	shader_material.set_shader_parameter("liquid_speed", merge_outline_liquid_speed)
+
+
+static func _get_tag_icon(tag: StringName) -> Texture2D:
+	var key: String = String(tag)
+	if _tag_icon_cache.has(key):
+		return _tag_icon_cache[key] as Texture2D
+	var texture: Texture2D = load("%s/%s.png" % [TAG_ICON_DIR, key]) as Texture2D
+	_tag_icon_cache[key] = texture
+	return texture
 
 
 func set_drag_guard(guard: Callable) -> void:
@@ -355,6 +620,7 @@ func _apply_data() -> void:
 	title_label.text = data.title
 	_fit_title_text()
 	_apply_description(data)
+	_apply_tags(data)
 	art_texture.texture = data.art
 	tier_indicator.tier = _card_tier
 	attack_stat.value = data.get_attack(_card_tier)
@@ -403,6 +669,12 @@ func _make_editor_preview_signature() -> String:
 		str(data.health),
 		str(data.cooldown),
 		str(data.traits.size()),
+		str(data.tags),
+		str(tag_circle_scale),
+		str(tag_circle_gap),
+		str(tag_circle_bottom_margin),
+		str(tag_icon_margin),
+		str(tag_circle_outline_width),
 	])
 	return "|".join(parts)
 
@@ -534,6 +806,8 @@ func can_merge_with(other: CardVisual) -> bool:
 
 
 func prepare_for_merge() -> void:
+	_effect_outline_locked = false
+	_clear_merge_outline_target()
 	_stop_tweens()
 	_hovered = false
 	_dragging = false
@@ -684,13 +958,16 @@ func _set_stat_value(stat: StatCircle, stat_type: CardStat.Type, value: int, sho
 
 
 func reset_combat_visuals() -> void:
+	clear_effect_outline()
 	_stop_tweens()
 	_suppress_stat_changes = true
 	_hovered = false
 	_dragging = false
 	_snapping = false
+	_death_animation_active = false
+	_death_animation_done = false
 	self_modulate = Color.WHITE
-	visual_group.material = _hit_flash_material
+	CardVisualCombatFeedback.clear_death_burn_materials(self)
 	_set_hit_flash_strength(0.0)
 	card_surface.position = Vector2.ZERO
 	card_surface.scale = Vector2.ONE
@@ -720,18 +997,49 @@ func _on_attack_return_finished() -> void:
 	z_index = attack_start_z_index
 
 
-func play_hit_animation(attacker_center: Vector2) -> void:
-	var hit_tween := start_hit_animation(attacker_center)
+func play_hit_animation(attacker_center: Vector2, accent_color: Color = ORANGE_COLOR) -> void:
+	var hit_tween := start_hit_animation(attacker_center, accent_color)
 	await hit_tween.finished
 
 
-func start_hit_animation(attacker_center: Vector2) -> Tween:
-	return CardVisualCombatFeedback.start_hit_animation(self, attacker_center)
+func start_hit_animation(attacker_center: Vector2, accent_color: Color = ORANGE_COLOR) -> Tween:
+	return CardVisualCombatFeedback.start_hit_animation(self, attacker_center, accent_color)
 
 
-func play_death_animation() -> void:
-	_stop_tweens()
+func play_death_effect_windup(effect_color: Color) -> void:
+	await CardVisualCombatFeedback.play_death_effect_windup(self, effect_color)
+
+
+func play_death_animation(fly_direction: Vector2) -> void:
+	if _death_animation_done:
+		return
+	if _death_animation_active:
+		while _death_animation_active and is_instance_valid(self):
+			await get_tree().process_frame
+		return
+	_death_animation_active = true
+	await CardVisualCombatFeedback.play_death_animation(self, fly_direction)
 	hide()
+	_death_animation_active = false
+	_death_animation_done = true
+
+
+func play_dissolve_animation() -> void:
+	if _death_animation_done:
+		return
+	if _death_animation_active:
+		while _death_animation_active and is_instance_valid(self):
+			await get_tree().process_frame
+		return
+	_death_animation_active = true
+	await CardVisualCombatFeedback.play_dissolve_animation(self)
+	hide()
+	_death_animation_active = false
+	_death_animation_done = true
+
+
+func play_sell_drop(target_global_position: Vector2) -> void:
+	await CardVisualCombatFeedback.play_sell_drop(self, target_global_position)
 
 
 func play_survival_animation() -> void:
@@ -752,6 +1060,11 @@ func _set_hit_flash_color(color: Color) -> void:
 
 func _set_hit_flash_strength(strength: float) -> void:
 	CardVisualCombatFeedback.set_hit_flash_strength(self, strength)
+
+
+func _set_death_burn_value(value: float) -> void:
+	if _death_burn_material:
+		_death_burn_material.set_shader_parameter("dissolve_value", value)
 
 
 func _configure_feedback_materials() -> void:
@@ -858,7 +1171,9 @@ func _stop_drag() -> void:
 	if not _dragging:
 		return
 	_dragging = false
+	_effect_outline_locked = false
 	_drag_tilt_target = 0.0
+	_clear_merge_outline_target()
 	_stop_tweens()
 	var merge_target := _find_merge_target()
 	if merge_target:
@@ -890,6 +1205,8 @@ func _stop_drag() -> void:
 
 
 func prepare_for_collection() -> void:
+	_effect_outline_locked = false
+	_clear_merge_outline_target()
 	_stop_tweens()
 	_hovered = false
 	_dragging = false
@@ -917,16 +1234,20 @@ func _is_over_sell_zone() -> bool:
 	return false
 
 
+func _is_over_valid_drop_destination() -> bool:
+	return _find_drop_slot() != null or _is_over_sell_zone()
+
+
 func _find_merge_target() -> CardVisual:
 	var target: CardVisual = null
-	var card_center := get_card_center()
+	var hover_point: Vector2 = get_global_mouse_position()
 	for node in get_tree().get_nodes_in_group("card_visuals"):
 		var candidate := node as CardVisual
 		if not candidate or not can_merge_with(candidate):
 			continue
 		if candidate._interaction_blocked or candidate._dragging or candidate._snapping:
 			continue
-		if not candidate.is_visible_in_tree() or not candidate.get_global_rect().has_point(card_center):
+		if not candidate.is_visible_in_tree() or not candidate._contains_visual_point(hover_point):
 			continue
 		if not target or candidate.z_index > target.z_index:
 			target = candidate

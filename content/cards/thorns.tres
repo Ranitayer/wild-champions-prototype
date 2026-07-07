@@ -1,0 +1,55 @@
+[gd_resource type="Resource" script_class="CardData" format=3 uid="uid://chq2yoen6wbvb"]
+
+[ext_resource type="Script" uid="uid://dsht6jxxa5f8m" path="res://game/cards/card_data.gd" id="1_data"]
+[ext_resource type="Texture2D" uid="uid://bocujd6lr7uxj" path="res://assets/art/cards/thorns.png" id="2_art"]
+[ext_resource type="Script" uid="uid://btnsvwf2c3jpm" path="res://game/cards/traits/thorns_trait.gd" id="3_thorns"]
+[ext_resource type="Script" uid="uid://buc18u4ppgb8o" path="res://game/cards/card_tier_override.gd" id="4_tier"]
+[ext_resource type="Script" uid="uid://b551vbw3ovtvi" path="res://game/cards/traits/poison_trait.gd" id="5_poison"]
+[ext_resource type="Script" uid="uid://cj6asplottqul" path="res://game/cards/effects/adjacent_attack_damage_effect.gd" id="6_adjacent_damage"]
+
+[sub_resource type="Resource" id="AdjacentAttackDamage"]
+script = ExtResource("6_adjacent_damage")
+
+[sub_resource type="Resource" id="Thorns2"]
+script = ExtResource("3_thorns")
+value = 2
+
+[sub_resource type="Resource" id="Tier2"]
+script = ExtResource("4_tier")
+attack = 3
+health = 6
+replace_traits = true
+traits = Array[Resource]([SubResource("Thorns2")])
+
+[sub_resource type="Resource" id="Thorns3"]
+script = ExtResource("3_thorns")
+value = 3
+
+[sub_resource type="Resource" id="Poison1"]
+script = ExtResource("5_poison")
+
+[sub_resource type="Resource" id="Tier3"]
+script = ExtResource("4_tier")
+tier = 3
+attack = 4
+health = 8
+replace_traits = true
+traits = Array[Resource]([SubResource("Thorns3"), SubResource("Poison1")])
+
+[sub_resource type="Resource" id="Thorns1"]
+script = ExtResource("3_thorns")
+
+[resource]
+script = ExtResource("1_data")
+title = "THORNS"
+description = "Attack: Deal 1 damage to adjacent cards of card attacked."
+art = ExtResource("2_art")
+art_scale = 1.2000000000000002
+rarity = 2
+tags = Array[StringName]([&"spider"])
+attack = 2
+health = 4
+cooldown = 3
+effects = Array[Resource]([SubResource("AdjacentAttackDamage")])
+traits = Array[Resource]([SubResource("Thorns1")])
+tier_overrides = Array[Resource]([SubResource("Tier2"), SubResource("Tier3")])

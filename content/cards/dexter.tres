@@ -1,0 +1,39 @@
+[gd_resource type="Resource" script_class="CardData" format=3 uid="uid://b5hg6e53u4csi"]
+
+[ext_resource type="Script" uid="uid://dsht6jxxa5f8m" path="res://game/cards/card_data.gd" id="1_data"]
+[ext_resource type="Texture2D" uid="uid://cre2dpmetow0m" path="res://assets/art/cards/dexter.png" id="2_art"]
+[ext_resource type="Script" uid="uid://c4s8t1al8pggm" path="res://game/cards/effects/execute_low_health_effect.gd" id="3_execute"]
+[ext_resource type="Script" uid="uid://dhf0buqjajao1" path="res://game/cards/traits/predator_trait.gd" id="4_predator"]
+[ext_resource type="Script" uid="uid://buc18u4ppgb8o" path="res://game/cards/card_tier_override.gd" id="5_tier"]
+[ext_resource type="Script" uid="uid://boo1tovmjm1uu" path="res://game/cards/traits/survivalist_trait.gd" id="6_survivalist"]
+
+[sub_resource type="Resource" id="Execute"]
+script = ExtResource("3_execute")
+
+[sub_resource type="Resource" id="Predator"]
+script = ExtResource("4_predator")
+
+[sub_resource type="Resource" id="Survivalist"]
+script = ExtResource("6_survivalist")
+
+[sub_resource type="Resource" id="Tier2"]
+script = ExtResource("5_tier")
+attack = 5
+health = 7
+replace_traits = true
+traits = Array[Resource]([SubResource("Predator"), SubResource("Survivalist")])
+
+[resource]
+script = ExtResource("1_data")
+title = "DEXTER"
+description = "Execute enemies with 2 Health or less."
+art = ExtResource("2_art")
+art_scale = 1.3
+rarity = 4
+tags = Array[StringName]([&"animal"])
+attack = 5
+health = 3
+cooldown = 2
+effects = Array[Resource]([SubResource("Execute")])
+traits = Array[Resource]([SubResource("Predator")])
+tier_overrides = Array[Resource]([SubResource("Tier2")])

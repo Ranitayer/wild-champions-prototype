@@ -6,8 +6,6 @@ const DARK_COLOR := Color("151d28")
 const SELL_COLOR := Color("de9e41")
 const CARD_FONT: FontFile = preload("res://assets/fonts/cardfont.ttf")
 const ZONE_MARGIN := 25.0
-const SELL_ZOOM_DURATION := 0.22
-
 var _sell_zone: Panel
 var _selling: bool = false
 var _shop_active: bool = false
@@ -75,8 +73,6 @@ func _on_card_sell_requested(card: CardVisual) -> void:
 	if not _shop_active or _selling or not _is_sellable(card):
 		return
 	_selling = true
-	if _sell_zone:
-		_sell_zone.hide()
 	var price: int = CardSellPrice.get_price(card.card_data, card.get_card_tier())
 	card.set_interaction_blocked(true)
 	card.hide_sell_price()
@@ -86,9 +82,18 @@ func _on_card_sell_requested(card: CardVisual) -> void:
 	var wallet: ShopWallet = get_tree().get_first_node_in_group("shop_wallets") as ShopWallet
 	if wallet:
 		wallet.add_coins(price)
-	await _play_sell_zoom(card)
+	if _sell_zone:
+		await card.play_sell_drop(_get_sell_snap_position(card))
+	if not is_instance_valid(card):
+		if _sell_zone:
+			_sell_zone.hide()
+		_selling = false
+		return
+	await card.play_dissolve_animation()
 	if is_instance_valid(card):
 		card.queue_free()
+	if _sell_zone:
+		_sell_zone.hide()
 	_refresh_sell_prices()
 	_selling = false
 
@@ -166,11 +171,5 @@ func _position_sell_zone() -> void:
 	_sell_zone.position = arena.bottom_slots.position + Vector2(arena.bottom_slots.size.x + ZONE_MARGIN, 0.0)
 
 
-func _play_sell_zoom(card: CardVisual) -> void:
-	if not is_instance_valid(card):
-		return
-	var tween: Tween = create_tween().set_parallel(true)
-	tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	tween.tween_property(card.card_surface, "scale", Vector2.ZERO, SELL_ZOOM_DURATION)
-	tween.tween_property(card, "global_position", _sell_zone.global_position + (_sell_zone.size - card.size) * 0.5, SELL_ZOOM_DURATION)
-	await tween.finished
+func _get_sell_snap_position(card: CardVisual) -> Vector2:
+	return _sell_zone.global_position + (_sell_zone.size - card.size) * 0.5

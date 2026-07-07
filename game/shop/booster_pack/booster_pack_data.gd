@@ -18,8 +18,16 @@ extends Resource
 @export_range(0.0, 100.0, 0.1) var epic_chance := 1.8
 @export_range(0.0, 100.0, 0.1) var mythic_chance := 0.2
 
+@export_group("Soft Pity")
+@export var soft_pity_enabled := true
+@export_range(0.0, 100.0, 0.1) var rare_pity_per_miss := 1.0
+@export_range(0.0, 100.0, 0.1) var epic_pity_per_miss := 0.25
+@export_range(0.0, 100.0, 0.01) var mythic_pity_per_miss := 0.05
+@export_range(0.0, 100.0, 0.1) var rare_pity_max := 20.0
+@export_range(0.0, 100.0, 0.1) var epic_pity_max := 5.0
+@export_range(0.0, 100.0, 0.1) var mythic_pity_max := 1.0
 
-func pick_rewards(count: int, random: RandomNumberGenerator) -> Array[CardData]:
+func pick_rewards(count: int, random: RandomNumberGenerator, pity_misses := 0) -> Array[CardData]:
 	var rewards: Array[CardData] = []
 	if not random:
 		push_error("BoosterPackData needs seeded RandomNumberGenerator.")
@@ -30,7 +38,7 @@ func pick_rewards(count: int, random: RandomNumberGenerator) -> Array[CardData]:
 
 	while rewards.size() < count and attempts > 0:
 		attempts -= 1
-		var rarity: CardData.Rarity = _roll_rarity(random)
+		var rarity: CardData.Rarity = _roll_rarity(random, pity_misses)
 		var card: CardData = _pick_unused_card(rarity, picked, cards, random)
 		if not card:
 			continue
@@ -46,24 +54,69 @@ func pick_rewards(count: int, random: RandomNumberGenerator) -> Array[CardData]:
 	return rewards
 
 
-func _roll_rarity(random: RandomNumberGenerator) -> CardData.Rarity:
-	var total_chance: float = common_chance + uncommon_chance + rare_chance + epic_chance + mythic_chance
+func has_high_rarity(cards: Array[CardData]) -> bool:
+	for card in cards:
+		if card and card.rarity >= CardData.Rarity.RARE:
+			return true
+	return false
+
+
+func get_pack_key() -> String:
+	if not resource_path.is_empty():
+		return resource_path
+	return title
+
+
+func _roll_rarity(random: RandomNumberGenerator, pity_misses := 0) -> CardData.Rarity:
+	var chances := _get_effective_chances(pity_misses)
+	var common: float = chances[CardData.Rarity.COMMON]
+	var uncommon: float = chances[CardData.Rarity.UNCOMMON]
+	var rare: float = chances[CardData.Rarity.RARE]
+	var epic: float = chances[CardData.Rarity.EPIC]
+	var mythic: float = chances[CardData.Rarity.MYTHIC]
+	var total_chance: float = common + uncommon + rare + epic + mythic
 	if total_chance <= 0.0:
 		return CardData.Rarity.COMMON
 
 	var roll: float = random.randf() * total_chance
-	if roll < common_chance:
+	if roll < common:
 		return CardData.Rarity.COMMON
-	roll -= common_chance
-	if roll < uncommon_chance:
+	roll -= common
+	if roll < uncommon:
 		return CardData.Rarity.UNCOMMON
-	roll -= uncommon_chance
-	if roll < rare_chance:
+	roll -= uncommon
+	if roll < rare:
 		return CardData.Rarity.RARE
-	roll -= rare_chance
-	if roll < epic_chance:
+	roll -= rare
+	if roll < epic:
 		return CardData.Rarity.EPIC
 	return CardData.Rarity.MYTHIC
+
+
+func _get_effective_chances(pity_misses: int) -> Array[float]:
+	var chances: Array[float] = [
+		common_chance,
+		uncommon_chance,
+		rare_chance,
+		epic_chance,
+		mythic_chance,
+	]
+	if not soft_pity_enabled or pity_misses <= 0:
+		return chances
+
+	var rare_bonus: float = maxf(0.0, minf(rare_chance + rare_pity_per_miss * pity_misses, rare_pity_max) - rare_chance)
+	var epic_bonus: float = maxf(0.0, minf(epic_chance + epic_pity_per_miss * pity_misses, epic_pity_max) - epic_chance)
+	var mythic_bonus: float = maxf(0.0, minf(mythic_chance + mythic_pity_per_miss * pity_misses, mythic_pity_max) - mythic_chance)
+	var total_bonus := rare_bonus + epic_bonus + mythic_bonus
+	var common_loss: float = minf(chances[CardData.Rarity.COMMON], total_bonus)
+	chances[CardData.Rarity.COMMON] -= common_loss
+	total_bonus -= common_loss
+	if total_bonus > 0.0:
+		chances[CardData.Rarity.UNCOMMON] = maxf(0.0, chances[CardData.Rarity.UNCOMMON] - total_bonus)
+	chances[CardData.Rarity.RARE] += rare_bonus
+	chances[CardData.Rarity.EPIC] += epic_bonus
+	chances[CardData.Rarity.MYTHIC] += mythic_bonus
+	return chances
 
 
 func _pick_unused_card(

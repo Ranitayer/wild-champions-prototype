@@ -17,3 +17,6 @@ uncommon_chance = 75.0
 rare_chance = 20.0
 epic_chance = 4.5
 mythic_chance = 0.5
+rare_pity_max = 30.0
+epic_pity_max = 8.0
+mythic_pity_max = 1.5

@@ -33,6 +33,10 @@ func get_outgoing_poison_amount(_trait_value: int) -> int:
 	return 0
 
 
+func get_return_attack_damage(_trait_value: int) -> int:
+	return 0
+
+
 func get_incoming_attack_miss_chance(_trait_value: int) -> float:
 	return 0.0
 

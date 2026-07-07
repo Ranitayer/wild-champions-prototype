@@ -103,131 +103,151 @@ func _play_event(event: BattleEvent) -> void:
 		BattleEvent.COMBAT_STARTED:
 			combat_started.emit()
 		BattleEvent.TICK:
-			await _play_tick(event.data)
+			await _play_tick(event)
 		BattleEvent.BUFF_APPLIED:
-			await _play_buff(event.data)
+			await _play_buff(event)
 		BattleEvent.TEMPORARY_ATTACK_APPLIED:
-			await _play_temporary_attack(event.data)
+			await _play_temporary_attack(event)
 		BattleEvent.BEFORE_ATTACK:
-			await _play_before_attack(event.data)
+			await _play_before_attack(event)
 		BattleEvent.ATTACK_MISSED:
-			await _play_attack_missed(event.data)
+			await _play_attack_missed(event)
 		BattleEvent.DAMAGE_APPLIED:
-			await _play_damage(event.data)
+			await _play_damage(event)
 		BattleEvent.EFFECT_DAMAGE_GROUP:
-			await _play_effect_damage_group(event.data)
+			await _play_effect_damage_group(event)
 		BattleEvent.EFFECT_TRIGGERED:
-			await _play_effect_triggered(event.data)
+			await _play_effect_triggered(event)
+		BattleEvent.DEATH_EFFECT_TRIGGERED:
+			await _play_death_effect_triggered(event)
 		BattleEvent.HEAL_APPLIED:
-			await _play_heal(event.data)
+			await _play_heal(event)
 		BattleEvent.POISON_APPLIED:
-			await _play_poison_applied(event.data)
+			await _play_poison_applied(event)
 		BattleEvent.POISON_DAMAGE:
-			await _play_poison_damage(event.data)
+			await _play_poison_damage(event)
 		BattleEvent.DEATH_PREVENTED:
-			await _play_death_prevented(event.data)
+			await _play_death_prevented(event)
 		BattleEvent.CARD_DIED:
-			_play_death(event.data)
+			await _play_death(event)
 
 
-func _play_tick(event: Dictionary) -> void:
+func _play_tick(event: BattleEvent) -> void:
 	await get_tree().create_timer(cooldown_tick_seconds).timeout
-	var cooldowns: Dictionary = event["cooldowns"]
+	var cooldowns: Dictionary = event.get_dictionary("cooldowns")
 	for card_id in cooldowns:
 		var binding := _get_binding(int(card_id))
 		if binding:
 			binding.visual.set_cooldown_value(int(cooldowns[card_id]), false)
 
 
-func _play_buff(event: Dictionary) -> void:
+func _play_buff(event: BattleEvent) -> void:
 	var effect_start_ms := Time.get_ticks_msec()
-	var source_id := int(event["source_id"])
-	var target_id := int(event["target_id"])
+	var source_id := event.get_int("source_id")
+	var target_id := event.get_int("target_id")
 	var source := _get_binding(source_id)
 	var target := _get_binding(target_id)
 	if not source or not target:
 		return
-	await buff_effect.play(source.visual, target.visual, CardStat.Type.ATTACK, int(event["amount"]))
-	target.visual.set_attack_value(int(event["result"]))
-	buff_applied.emit(source_id, target_id, str(event["stat"]), int(event["amount"]))
+	var amount := event.get_int("amount")
+	var stat := event.get_string("stat", "attack")
+	var stat_type := CardStat.Type.HEALTH if stat == "health" else CardStat.Type.ATTACK
+	await buff_effect.play(source.visual, target.visual, stat_type, amount)
+	if stat == "health":
+		target.visual.set_health_value(event.get_int("result"))
+	else:
+		target.visual.set_attack_value(event.get_int("result"))
+	buff_applied.emit(source_id, target_id, stat, amount)
 	await _wait_for_effect_time(effect_start_ms)
 
 
-func _play_temporary_attack(event: Dictionary) -> void:
+func _play_temporary_attack(event: BattleEvent) -> void:
 	var effect_start_ms := Time.get_ticks_msec()
-	var source_id := int(event["source_id"])
-	var target_id := int(event["target_id"])
+	var source_id := event.get_int("source_id")
+	var target_id := event.get_int("target_id")
 	var source := _get_binding(source_id)
 	var target := _get_binding(target_id)
 	if not source or not target:
 		return
-	var amount := int(event["amount"])
-	var result := int(event["result"])
-	effect_popup.show_text(target.visual, "Temporary Damage", CardStat.TEMPORARY_ATTACK_COLOR)
+	var amount := event.get_int("amount")
+	var result := event.get_int("result")
+	effect_popup.show_text(
+		target.visual,
+		event.get_string("effect_name", "Temporary Damage"),
+		event.get_color("effect_color", CardStat.TEMPORARY_ATTACK_COLOR)
+	)
 	await buff_effect.play(source.visual, target.visual, CardStat.Type.TEMPORARY_ATTACK, amount)
 	target.visual.set_temporary_attack_value(result)
 	temporary_attack_applied.emit(source_id, target_id, amount, result)
 	await _wait_for_effect_time(effect_start_ms)
 
 
-func _play_heal(event: Dictionary) -> void:
+func _play_heal(event: BattleEvent) -> void:
 	var effect_start_ms := Time.get_ticks_msec()
-	var source_id := int(event["source_id"])
-	var target_id := int(event["target_id"])
+	var source_id := event.get_int("source_id")
+	var target_id := event.get_int("target_id")
 	var source := _get_binding(source_id)
 	var target := _get_binding(target_id)
 	if not source or not target:
 		return
-	var amount := int(event["amount"])
+	var amount := event.get_int("amount")
+	var target_health := event.get_int("target_health")
 	await buff_effect.play(source.visual, target.visual, CardStat.Type.HEALTH, amount)
-	target.visual.set_health_value(int(event["target_health"]))
-	heal_applied.emit(source_id, target_id, amount, int(event["target_health"]))
+	target.visual.set_health_value(target_health)
+	heal_applied.emit(source_id, target_id, amount, target_health)
 	await _wait_for_effect_time(effect_start_ms)
 
 
-func _play_poison_applied(event: Dictionary) -> void:
+func _play_poison_applied(event: BattleEvent) -> void:
 	var effect_start_ms := Time.get_ticks_msec()
-	var source := _get_binding(int(event["source_id"]))
-	var target := _get_binding(int(event["target_id"]))
+	var source_id := event.get_int("source_id")
+	var target_id := event.get_int("target_id")
+	var amount := event.get_int("amount")
+	var result := event.get_int("result")
+	var source := _get_binding(source_id)
+	var target := _get_binding(target_id)
 	if not source or not target:
 		return
 	effect_popup.show_text(target.visual, "Poisoned", CardStat.POISON_FEEDBACK_COLOR)
-	await buff_effect.play(source.visual, target.visual, CardStat.Type.POISON, int(event["amount"]))
-	target.visual.set_poison_value(int(event["result"]))
-	poison_applied.emit(int(event["source_id"]), int(event["target_id"]), int(event["amount"]), int(event["result"]))
+	await buff_effect.play(source.visual, target.visual, CardStat.Type.POISON, amount)
+	target.visual.set_poison_value(result)
+	poison_applied.emit(source_id, target_id, amount, result)
 	await _wait_for_effect_time(effect_start_ms)
 
 
-func _play_poison_damage(event: Dictionary) -> void:
+func _play_poison_damage(event: BattleEvent) -> void:
 	var effect_start_ms := Time.get_ticks_msec()
-	var target := _get_binding(int(event["target_id"]))
+	var target_id := event.get_int("target_id")
+	var target := _get_binding(target_id)
 	if not target:
 		return
-	var damage := int(event["damage"])
+	var damage := event.get_int("damage")
+	var target_health := event.get_int("target_health")
 	await buff_effect.play_stat_to_stat(
 		target.visual,
 		CardStat.Type.POISON,
 		CardStat.Type.HEALTH,
 		damage
 	)
-	target.visual.set_health_value(int(event["target_health"]))
-	target.visual.set_poison_value(int(event["poison_remaining"]))
-	damage_applied.emit(int(event["target_id"]), damage, int(event["target_health"]))
-	poison_damage_applied.emit(int(event["target_id"]), damage, int(event["target_health"]))
+	target.visual.set_health_value(target_health)
+	target.visual.set_poison_value(event.get_int("poison_remaining"))
+	damage_applied.emit(target_id, damage, target_health)
+	poison_damage_applied.emit(target_id, damage, target_health)
 	await _wait_for_effect_time(effect_start_ms)
 
 
-func _play_death_prevented(event: Dictionary) -> void:
+func _play_death_prevented(event: BattleEvent) -> void:
 	var effect_start_ms := Time.get_ticks_msec()
-	var card_id := int(event["card_id"])
+	var card_id := event.get_int("card_id")
 	var binding := _get_binding(card_id)
 	if not binding:
 		return
-	var effect_name := str(event["effect_name"])
-	effect_popup.show_text(binding.visual, effect_name, Color(str(event["effect_color"])))
-	binding.visual.set_health_value(int(event["target_health"]))
-	binding.visual.set_poison_value(int(event["poison_remaining"]))
-	death_prevented.emit(card_id, effect_name, int(event["target_health"]))
+	var effect_name := event.get_string("effect_name")
+	var target_health := event.get_int("target_health")
+	effect_popup.show_text(binding.visual, effect_name, event.get_color("effect_color"))
+	binding.visual.set_health_value(target_health)
+	binding.visual.set_poison_value(event.get_int("poison_remaining"))
+	death_prevented.emit(card_id, effect_name, target_health)
 	await binding.visual.play_survival_animation()
 	await _wait_for_effect_time(effect_start_ms)
 
@@ -236,9 +256,9 @@ func _on_stat_changed(card: CardVisual, stat_type: CardStat.Type, delta: int) ->
 	stat_popup.show_change(card, stat_type, delta)
 
 
-func _play_before_attack(event: Dictionary) -> void:
-	var attacker_id := int(event["attacker_id"])
-	var target_id := int(event["target_id"])
+func _play_before_attack(event: BattleEvent) -> void:
+	var attacker_id := event.get_int("attacker_id")
+	var target_id := event.get_int("target_id")
 	var attacker := _get_binding(attacker_id)
 	var target := _get_binding(target_id)
 	if not attacker or not target:
@@ -248,10 +268,10 @@ func _play_before_attack(event: Dictionary) -> void:
 	attacker.visual.start_attack_return()
 
 
-func _play_attack_missed(event: Dictionary) -> void:
+func _play_attack_missed(event: BattleEvent) -> void:
 	var effect_start_ms := Time.get_ticks_msec()
-	var attacker_id := int(event["attacker_id"])
-	var target_id := int(event["target_id"])
+	var attacker_id := event.get_int("attacker_id")
+	var target_id := event.get_int("target_id")
 	var attacker := _get_binding(attacker_id)
 	var target := _get_binding(target_id)
 	if not attacker or not target:
@@ -260,51 +280,79 @@ func _play_attack_missed(event: Dictionary) -> void:
 	var dodge_direction := -1.0 if target.slot.slot_index < midpoint else 1.0
 	effect_popup.show_text(
 		target.visual,
-		str(event["effect_name"]),
-		Color(str(event["effect_color"]))
+		event.get_string("effect_name"),
+		event.get_color("effect_color")
 	)
 	await target.visual.play_dodge_animation(dodge_direction)
 	while is_instance_valid(attacker.visual) and attacker.visual.is_attack_returning():
 		await get_tree().process_frame
 	if is_instance_valid(attacker.visual):
-		attacker.visual.set_temporary_attack_value(int(event["temporary_attack_remaining"]))
-		attacker.visual.set_cooldown_value(int(event["attacker_cooldown"]), false)
+		attacker.visual.set_temporary_attack_value(event.get_int("temporary_attack_remaining"))
+		attacker.visual.set_cooldown_value(event.get_int("attacker_cooldown"), false)
 	attack_missed.emit(attacker_id, target_id)
 	await _wait_for_effect_time(effect_start_ms)
 
 
-func _play_damage(event: Dictionary) -> void:
+func _play_damage(event: BattleEvent) -> void:
 	var effect_start_ms := Time.get_ticks_msec()
-	var attacker_id := int(event["attacker_id"])
-	var target_id := int(event["target_id"])
+	var attacker_id := event.get_int("attacker_id")
+	var target_id := event.get_int("target_id")
 	var attacker := _get_binding(attacker_id)
 	var target := _get_binding(target_id)
 	if not attacker or not target:
 		return
-	var remaining_health := int(event["target_health"])
+	var damage := event.get_int("damage")
+	var remaining_health := event.get_int("target_health")
 	target.visual.set_health_value(remaining_health)
-	damage_applied.emit(target_id, int(event["damage"]), remaining_health)
-	if int(event["damage"]) <= 0:
+	damage_applied.emit(target_id, damage, remaining_health)
+	var extra_hit_tweens: Array[Tween] = []
+	var extra_hits: Array = event.get_array("extra_hits")
+	var hit_origin := attacker.visual.get_card_center()
+	var flash_color := event.get_color("flash_color", CardVisual.ORANGE_COLOR)
+	if not event.get_string("effect_name").is_empty():
+		effect_popup.show_text(target.visual, event.get_string("effect_name"), event.get_color("effect_color", flash_color))
+	for hit_value in extra_hits:
+		var hit: BattleEffectHit = hit_value as BattleEffectHit
+		if not hit:
+			continue
+		var extra_target := _get_binding(hit.target_id)
+		if not extra_target:
+			continue
+		extra_target.visual.set_health_value(hit.target_health)
+		damage_applied.emit(hit.target_id, hit.damage, hit.target_health)
+		effect_damage_applied.emit(attacker_id, hit.target_id, hit.damage, hit.target_health)
+		extra_hit_tweens.append(extra_target.visual.start_hit_animation(hit_origin, flash_color))
+	if damage <= 0:
 		effect_popup.show_text(target.visual, "Block")
 		await block_effect.play(target.visual)
 	else:
-		await target.visual.play_hit_animation(attacker.visual.get_card_center())
+		var main_hit := target.visual.start_hit_animation(hit_origin, flash_color)
+		if main_hit and main_hit.is_running():
+			await main_hit.finished
+	if not extra_hit_tweens.is_empty():
+		var first_extra_hit: Tween = extra_hit_tweens[0]
+		if first_extra_hit and first_extra_hit.is_running():
+			await first_extra_hit.finished
 	while is_instance_valid(attacker.visual) and attacker.visual.is_attack_returning():
 		await get_tree().process_frame
 	if is_instance_valid(attacker.visual):
-		attacker.visual.set_temporary_attack_value(int(event["temporary_attack_remaining"]))
-		attacker.visual.set_cooldown_value(int(event["attacker_cooldown"]), false)
+		attacker.visual.set_temporary_attack_value(event.get_int("temporary_attack_remaining"))
+		attacker.visual.set_cooldown_value(event.get_int("attacker_cooldown"), false)
 	await _wait_for_effect_time(effect_start_ms)
 
 
-func _play_effect_damage_group(event: Dictionary) -> void:
+func _play_effect_damage_group(event: BattleEvent) -> void:
 	var effect_start_ms := Time.get_ticks_msec()
-	var source_id := int(event["source_id"])
+	var source_id := event.get_int("source_id")
 	var source := _get_binding(source_id)
 	if not source:
 		return
 	var hit_tweens: Array[Tween] = []
-	var hits: Array = event["hits"]
+	var hits: Array = event.get_array("hits")
+	var flash_color := event.get_color("flash_color", CardVisual.ORANGE_COLOR)
+	var source_center: Vector2 = source.visual.get_card_center()
+	if not event.get_string("effect_name").is_empty():
+		effect_popup.show_text(source.visual, event.get_string("effect_name"), event.get_color("effect_color", flash_color))
 	for hit_value in hits:
 		var hit: BattleEffectHit = hit_value as BattleEffectHit
 		if not hit:
@@ -318,35 +366,50 @@ func _play_effect_damage_group(event: Dictionary) -> void:
 		target.visual.set_health_value(remaining_health)
 		damage_applied.emit(target_id, damage, remaining_health)
 		effect_damage_applied.emit(source_id, target_id, damage, remaining_health)
-		hit_tweens.append(target.visual.start_hit_animation(source.visual.get_card_center()))
+		hit_tweens.append(target.visual.start_hit_animation(source_center, flash_color))
 	if not hit_tweens.is_empty():
-		await hit_tweens[0].finished
+		var first_hit_tween: Tween = hit_tweens[0]
+		if first_hit_tween and first_hit_tween.is_running():
+			await first_hit_tween.finished
+	if bool(event.get_value("source_dies_after_effect", false)):
+		await source.visual.play_death_animation(_get_death_fly_direction(source))
 	await _wait_for_effect_time(effect_start_ms)
 
 
-func _play_effect_triggered(event: Dictionary) -> void:
+func _play_effect_triggered(event: BattleEvent) -> void:
 	var effect_start_ms := Time.get_ticks_msec()
-	var binding := _get_binding(int(event["card_id"]))
+	var binding := _get_binding(event.get_int("card_id"))
 	if not binding:
 		return
 	effect_popup.show_text(
 		binding.visual,
-		str(event["effect_name"]),
-		Color(str(event["effect_color"]))
+		event.get_string("effect_name"),
+		event.get_color("effect_color")
 	)
 	await _wait_for_effect_time(effect_start_ms)
 
 
-func _play_death(event: Dictionary) -> void:
-	var card_id := int(event["card_id"])
+func _play_death_effect_triggered(event: BattleEvent) -> void:
+	var binding := _get_binding(event.get_int("card_id"))
+	if not binding:
+		return
+	await binding.visual.play_death_effect_windup(event.get_color("effect_color", Color("6000ff")))
+
+
+func _play_death(event: BattleEvent) -> void:
+	var card_id := event.get_int("card_id")
 	var binding := _get_binding(card_id)
 	if not binding:
 		return
+	await binding.visual.play_death_animation(_get_death_fly_direction(binding))
 	binding.slot.release(binding.visual)
-	binding.visual.play_death_animation()
 	binding.visual.queue_free()
 	_bindings_by_id.erase(card_id)
 	card_died.emit(card_id)
+
+
+func _get_death_fly_direction(binding: BattleCardBinding) -> Vector2:
+	return Vector2.UP if binding.slot.team == CardSlot.TEAM_ENEMY else Vector2.DOWN
 
 
 func _get_binding(card_id: int) -> BattleCardBinding:
