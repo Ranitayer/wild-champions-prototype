@@ -105,6 +105,13 @@ func get_attack_miss_trait() -> BattleTraitState:
 	return null
 
 
+func uses_lowest_health_target() -> bool:
+	for trait_state in traits:
+		if trait_state.definition.uses_lowest_health_target(trait_state.value):
+			return true
+	return false
+
+
 func get_attack_overflow_damage(damage: int, target_health_before: int, target_survived: bool) -> int:
 	var result := 0
 	for trait_state in traits:

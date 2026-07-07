@@ -6,6 +6,7 @@ const SLOT_SIZE := CardMetrics.SIZE
 const ADJACENT_SLOT_MARGIN := 25.0
 const CENTER_MARGIN := 160.0
 const CARD_SLOT_SCENE := preload("res://game/battle/card_slot.tscn")
+const CARD_SCENE := preload("res://game/cards/card_template.tscn")
 
 @onready var top_slots: HBoxContainer = %TopSlots
 @onready var bottom_slots: HBoxContainer = %BottomSlots
@@ -13,6 +14,7 @@ const CARD_SLOT_SCENE := preload("res://game/battle/card_slot.tscn")
 
 var _shop_active := false
 var _slots_locked := false
+var _remote_cards: Array[CardVisual] = []
 
 
 func _ready() -> void:
@@ -84,6 +86,70 @@ func set_slots_locked(locked: bool) -> void:
 	_slots_locked = locked
 	for slot in get_all_slots():
 		slot.accepts_cards = not locked
+
+
+func show_remote_board(payload: Array) -> void:
+	clear_remote_board()
+	for value in payload:
+		var entry := BattleBoardSnapshot._payload_entry(value)
+		if not entry:
+			continue
+		var slot: CardSlot = _find_slot(CardSlot.TEAM_ENEMY, entry.slot_index)
+		var card: CardVisual = _spawn_card_from_entry(entry, slot, true)
+		if card:
+			_remote_cards.append(card)
+
+
+func restore_player_board(payload: Array) -> void:
+	for slot in get_player_slots():
+		var card: CardVisual = slot.get_card()
+		if card:
+			slot.release(card)
+			card.hide()
+			card.queue_free()
+	for value in payload:
+		var entry := BattleBoardSnapshot._payload_entry(value)
+		if not entry:
+			continue
+		_spawn_card_from_entry(
+			entry,
+			_find_slot(CardSlot.TEAM_PLAYER, entry.slot_index),
+			false
+		)
+
+
+func clear_remote_board() -> void:
+	for slot in get_enemy_slots():
+		var card: CardVisual = slot.get_card()
+		if card and _remote_cards.has(card):
+			slot.release(card)
+	for card in _remote_cards:
+		if is_instance_valid(card):
+			card.queue_free()
+	_remote_cards.clear()
+
+
+func _find_slot(team: int, slot_index: int) -> CardSlot:
+	for slot in get_all_slots():
+		if slot.team == team and slot.slot_index == slot_index:
+			return slot
+	return null
+
+
+func _spawn_card_from_entry(entry: BattleBoardCardSnapshot, slot: CardSlot, blocked: bool) -> CardVisual:
+	if not slot or slot.has_card():
+		return null
+	var data: CardData = load(entry.card_id) as CardData
+	if not data:
+		return null
+	var card: CardVisual = CARD_SCENE.instantiate() as CardVisual
+	card.card_data = data
+	add_child(card)
+	card.set_card_tier(entry.tier)
+	card.global_position = slot.get_snap_position(card.card_size)
+	card.set_interaction_blocked(blocked, blocked)
+	slot.occupy(card)
+	return card
 
 
 func _get_slots(row: HBoxContainer) -> Array[CardSlot]:

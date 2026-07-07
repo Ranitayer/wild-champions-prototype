@@ -7,7 +7,7 @@ const DARK_COLOR := Color("151d28")
 const ERROR_COLOR := Color("a53030")
 
 @export var buff_effect_path: NodePath = ^"../../../EffectsLayer/BuffEffect"
-@export_range(0, 9999, 1) var starting_money := 50
+@export_range(0, 9999, 1) var starting_money := 10
 @export_range(0.05, 0.5, 0.01) var zoom_duration := 0.14
 @export_range(0.5, 1.0, 0.01) var zoom_start_scale := 0.75
 @export_range(0.0, 1.0, 0.05) var purchase_finish_delay := 0.2
@@ -57,6 +57,11 @@ func play_shop_close() -> void:
 
 func can_afford(price: int) -> bool:
 	return balance >= price
+
+
+func add_coins(amount: int) -> void:
+	balance = max(0, balance + amount)
+	money_stat.value = balance
 
 
 func is_busy() -> bool:

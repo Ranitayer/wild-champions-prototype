@@ -25,6 +25,7 @@ title = "BATTEROO"
 description = ""
 art = ExtResource("2_art")
 art_scale = 1.5
+tags = Array[StringName]([&"animal"])
 attack = 1
 health = 1
 cooldown = 1

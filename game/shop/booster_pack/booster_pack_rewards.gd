@@ -23,6 +23,11 @@ var _active := false
 var _hovered_card: CardVisual
 var _booster_packs: Array[BoosterPack] = []
 var _active_pack: BoosterPack
+var _reward_request_id := 0
+var _pending_reward_request_id := 0
+var _pending_reward_payload: Array = []
+var _pending_reward_received := false
+var _network_manager: NetworkManager
 
 
 func _ready() -> void:
@@ -31,10 +36,24 @@ func _ready() -> void:
 	set_process(false)
 	_create_dim_overlay()
 	_connect_booster_packs()
+	_network_manager = get_tree().get_first_node_in_group("network_managers") as NetworkManager
+	if _network_manager:
+		_network_manager.booster_rewards_received.connect(_on_booster_rewards_received)
 
 
 func is_active() -> bool:
 	return _active
+
+
+func force_close() -> void:
+	_clear_rewards()
+	if _dim_overlay:
+		_dim_overlay.hide()
+		_dim_overlay.color.a = 0.0
+	_active_pack = null
+	_set_active(false)
+	await _set_collection_locked(false)
+	_reopen_products()
 
 
 func _process(_delta: float) -> void:
@@ -60,7 +79,7 @@ func _on_pack_open_requested(pack: BoosterPack) -> void:
 	if not wallet.can_afford(data.price):
 		wallet.play_insufficient(pack)
 		return
-	var rewards: Array[CardData] = data.pick_rewards(data.reward_count, _get_random_generator())
+	var rewards: Array[CardData] = await _get_rewards(data)
 	if rewards.size() != data.reward_count:
 		return
 	_set_active(true)
@@ -117,6 +136,46 @@ func _get_reward_positions(count: int) -> Array[Vector2]:
 	return positions
 
 
+func _get_rewards(data: BoosterPackData) -> Array[CardData]:
+	if _network_manager and _network_manager.is_connected_to_peer() and not _network_manager.is_host():
+		return await _request_host_rewards(data)
+	return data.pick_rewards(data.reward_count, _get_random_generator())
+
+
+func _request_host_rewards(data: BoosterPackData) -> Array[CardData]:
+	if data.resource_path.is_empty():
+		return []
+	_reward_request_id += 1
+	_pending_reward_request_id = _reward_request_id
+	_pending_reward_payload.clear()
+	_pending_reward_received = false
+	if not _network_manager.request_booster_rewards(_pending_reward_request_id, data.resource_path, data.reward_count, data.price):
+		return []
+	var timeout_frames: int = 300
+	while not _pending_reward_received and _network_manager.is_connected_to_peer() and timeout_frames > 0:
+		timeout_frames -= 1
+		await get_tree().process_frame
+	if not _pending_reward_received:
+		return []
+	return _cards_from_payload(_pending_reward_payload)
+
+
+func _on_booster_rewards_received(request_id: int, reward_payload: Array) -> void:
+	if request_id != _pending_reward_request_id:
+		return
+	_pending_reward_payload = reward_payload.duplicate(true)
+	_pending_reward_received = true
+
+
+func _cards_from_payload(reward_payload: Array) -> Array[CardData]:
+	var rewards: Array[CardData] = []
+	for value in reward_payload:
+		var card: CardData = load(str(value)) as CardData
+		if card:
+			rewards.append(card)
+	return rewards
+
+
 func _create_reward_card(data: CardData, spawn_center: Vector2) -> CardVisual:
 	var card: CardVisual = CARD_SCENE.instantiate() as CardVisual
 	card.card_data = data
@@ -124,6 +183,7 @@ func _create_reward_card(data: CardData, spawn_center: Vector2) -> CardVisual:
 	card.global_position = spawn_center - CardMetrics.SIZE * 0.5
 	card.rotation_degrees = 0.0
 	card.z_index = 100
+	card.set_meta("booster_reward_card", true)
 	add_child(card)
 	card.pivot_offset = CardMetrics.SIZE * 0.5
 	card.set_card_tier(1)
@@ -134,6 +194,7 @@ func _create_reward_card(data: CardData, spawn_center: Vector2) -> CardVisual:
 func _on_reward_drag_started(card: CardVisual) -> void:
 	_stop_card_float(card)
 	_clear_reward_state(card)
+	card.remove_meta("booster_reward_card")
 	card.reparent(get_tree().current_scene, true)
 	await _close_rewards(card)
 	_reopen_products()

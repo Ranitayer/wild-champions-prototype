@@ -1,9 +1,11 @@
+@tool
 class_name CardVisual
 extends Control
 
 signal drag_started(card: CardVisual)
 signal invalid_drop_requested(card: CardVisual)
 signal merge_started(card: CardVisual, target: CardVisual)
+signal sell_requested(card: CardVisual)
 signal slotted(card: CardVisual)
 signal stat_changed(card: CardVisual, stat_type: CardStat.Type, delta: int)
 signal tier_changed(card: CardVisual, tier: int)
@@ -18,6 +20,9 @@ const DRAG_Z_INDEX := 4096
 const COMBAT_Z_INDEX := 2048
 const TOOLTIP_CANVAS_LAYER := 102
 const CARD_TRAIT_TOOLTIP := preload("res://game/ui/card_trait_tooltip/card_trait_tooltip.gd")
+const STAT_SCENE := preload("res://game/cards/stat_circle.tscn")
+const TIER_INDICATOR_DEFAULT_TOP_MARGIN := 12.0
+const TIER_INDICATOR_WITH_PRICE_TOP_MARGIN := 52.0
 const RARITY_BOTTOM_COLORS := [
 	Color("394a50"),
 	Color("25562e"),
@@ -33,7 +38,17 @@ const RARITY_TOP_COLORS := [
 	Color("ff6e6e"),
 ]
 
-@export var card_data: CardData
+@export var card_data: CardData:
+	set(value):
+		card_data = value
+		_refresh_card_visual()
+
+@export_group("Editor Preview")
+@export var editor_preview_data: CardData:
+	set(value):
+		editor_preview_data = value
+		_refresh_card_visual()
+@export_group("")
 
 @export_group("Combat Feedback")
 @export_range(0.02, 0.5, 0.01) var hit_duration := 0.12
@@ -77,7 +92,8 @@ var title_box_size := Vector2(207.0, 50.0)
 var title_box_offset_y := 10.0
 var title_box_corner_radius := 6
 var title_font_size := 20
-var title_side_margin := 10.0
+var title_min_font_size := 14
+var title_side_margin := 12.0
 var description_side_margin := 12.0
 var description_top_gap := 2.0
 var description_bottom_margin := 28.0
@@ -129,9 +145,9 @@ var _interaction_blocked := false
 var _tooltip_hover_while_blocked := false
 var _tier_cycle_shortcut_enabled := false
 var _resting_z_index := 0
-var _attack_start_position := Vector2.ZERO
-var _attack_start_z_index := 0
-var _attack_returning := false
+var attack_start_position := Vector2.ZERO
+var attack_start_z_index := 0
+var attack_returning := false
 var _suppress_stat_changes := false
 var _description_plain_text := ""
 var _trait_tooltip
@@ -140,15 +156,25 @@ var _base_tooltip_sections: Array[Dictionary] = []
 var _extra_hover_controls: Array[Control] = []
 var _drag_guard: Callable
 var _card_tier := 1
+var _sell_price_stat: StatCircle
+var _editor_preview_signature := ""
 
 static var _last_hover_z_index := 0
 
 
+func _enter_tree() -> void:
+	if Engine.is_editor_hint():
+		set_process(true)
+		call_deferred("_refresh_card_visual")
+
+
 func _ready() -> void:
-	add_to_group("card_visuals")
 	_configure_feedback_materials()
 	_configure_layout()
 	_apply_data()
+	if Engine.is_editor_hint():
+		return
+	add_to_group("card_visuals")
 	_configure_trait_tooltip()
 	card_surface.gui_input.connect(_gui_input)
 	title_box.gui_input.connect(_gui_input)
@@ -160,6 +186,9 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	if Engine.is_editor_hint():
+		_refresh_card_visual_if_changed()
+		return
 	_update_hover_state()
 	_update_trait_tooltip_visibility()
 	_update_trait_tooltip_position()
@@ -182,13 +211,11 @@ func _update_hover_state() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if _try_start_drag(event):
-		get_viewport().set_input_as_handled()
+	CardVisualInput.handle_unhandled_input(self, event)
 
 
 func _gui_input(event: InputEvent) -> void:
-	if _try_start_drag(event):
-		accept_event()
+	CardVisualInput.handle_gui_input(self, event)
 
 
 func _try_start_drag(event: InputEvent) -> bool:
@@ -216,6 +243,14 @@ func set_interaction_blocked(blocked: bool, allow_tooltip_hover := false) -> voi
 		_on_mouse_exited()
 	elif not blocked and was_hovered:
 		_hovered = false
+
+
+func set_current_slot(slot: CardSlot) -> void:
+	_current_slot = slot
+
+
+func get_current_slot() -> CardSlot:
+	return _current_slot
 
 
 func enable_tier_cycle_shortcut() -> void:
@@ -265,6 +300,30 @@ func remove_hover_control(control: Control) -> void:
 	_extra_hover_controls.erase(control)
 
 
+func show_sell_price(price: int, fill_color: Color) -> void:
+	if not is_node_ready() or not card_surface:
+		return
+	if not _sell_price_stat:
+		_sell_price_stat = STAT_SCENE.instantiate() as StatCircle
+		_sell_price_stat.size = Vector2.ONE * cooldown_stat_size
+		_sell_price_stat.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_sell_price_stat.z_index = 100
+		card_surface.add_child(_sell_price_stat)
+	add_hover_control(_sell_price_stat)
+	_sell_price_stat.value = price
+	_sell_price_stat.fill_color = fill_color
+	_sell_price_stat.position = Vector2(card_size.x - cooldown_stat_size + 12.0, -12.0)
+	_sell_price_stat.show()
+	tier_indicator.top_margin = TIER_INDICATOR_WITH_PRICE_TOP_MARGIN
+
+
+func hide_sell_price() -> void:
+	if _sell_price_stat:
+		remove_hover_control(_sell_price_stat)
+		_sell_price_stat.hide()
+		tier_indicator.top_margin = TIER_INDICATOR_DEFAULT_TOP_MARGIN
+
+
 func set_drag_guard(guard: Callable) -> void:
 	_drag_guard = guard
 
@@ -274,104 +333,27 @@ func clear_drag_guard() -> void:
 
 
 func _input(event: InputEvent) -> void:
-	if not _dragging:
-		return
-	var mouse_motion := event as InputEventMouseMotion
-	if mouse_motion:
-		global_position = get_global_mouse_position() - _drag_offset
-		_drag_tilt_target = clampf(
-			mouse_motion.relative.x * drag_sway_sensitivity,
-			-drag_max_sway,
-			drag_max_sway
-		)
-	var mouse_button := event as InputEventMouseButton
-	if mouse_button and mouse_button.button_index == MOUSE_BUTTON_LEFT and not mouse_button.pressed:
-		_stop_drag()
+	CardVisualInput.handle_drag_input(self, event)
 
 
 func _configure_layout() -> void:
-	custom_minimum_size = card_size
-	size = card_size
-	card_surface.size = card_size
-	card_surface.pivot_offset = card_size * 0.5
-
-	title_box.size = title_box_size
-	title_box.position = (card_size - title_box_size) * 0.5 + Vector2.DOWN * title_box_offset_y
-	title_label.position = Vector2(title_side_margin, 0.0)
-	title_label.size = Vector2(title_box_size.x - title_side_margin * 2.0, title_box_size.y)
-	title_label.add_theme_font_size_override("font_size", title_font_size)
-	_configure_rarity_panels()
-	_configure_art()
-
-	var title_style := title_box.get_theme_stylebox("panel").duplicate() as StyleBoxFlat
-	title_style.set_corner_radius_all(title_box_corner_radius)
-	title_box.add_theme_stylebox_override("panel", title_style)
-
-	var bottom_y := card_size.y - bottom_stat_size + bottom_stat_offset_y
-	var description_top := title_box.position.y + title_box.size.y + description_top_gap
-	var description_bottom := minf(
-		card_size.y - description_bottom_margin,
-		bottom_y - description_stat_gap
-	)
-	description_label.position = Vector2(description_side_margin, description_top)
-	description_label.size = Vector2(
-		maxf(0.0, card_size.x - description_side_margin * 2.0),
-		maxf(0.0, description_bottom - description_top)
-	)
-
-	var bottom_dimensions := Vector2.ONE * bottom_stat_size
-	attack_stat.size = bottom_dimensions
-	health_stat.size = bottom_dimensions
-	attack_stat.position = Vector2(bottom_stat_horizontal_inset, bottom_y)
-	health_stat.position = Vector2(card_size.x - bottom_stat_size - bottom_stat_horizontal_inset, bottom_y)
-	attack_stat.fill_color = attack_color
-	health_stat.fill_color = health_color
-	var temporary_attack_size := bottom_stat_size * temporary_attack_stat_scale
-	temporary_attack_stat.size = Vector2.ONE * temporary_attack_size
-	temporary_attack_stat.position = Vector2(
-		attack_stat.position.x + bottom_stat_size + temporary_attack_stat_margin,
-		attack_stat.position.y + (bottom_stat_size - temporary_attack_size) * 0.5
-	)
-	temporary_attack_stat.fill_color = CardStat.TEMPORARY_ATTACK_COLOR
-	var poison_size := bottom_stat_size * poison_stat_scale
-	poison_stat.size = Vector2.ONE * poison_size
-	poison_stat.position = Vector2(
-		health_stat.position.x - poison_size - poison_stat_margin,
-		health_stat.position.y + (bottom_stat_size - poison_size) * 0.5
-	)
-	poison_stat.fill_color = CardStat.POISON_COLOR
-
-	cooldown_stat.size = Vector2.ONE * cooldown_stat_size
-	cooldown_stat.position = cooldown_stat_position
-	cooldown_stat.fill_color = cooldown_stat_color
+	CardVisualLayout.configure(self)
 
 
 func _configure_rarity_panels() -> void:
-	var split_y := title_box.position.y + title_box.size.y * 0.5
-	var inner_width := maxf(0.0, card_size.x - OUTLINE_WIDTH * 2.0)
-	rarity_top.position = Vector2(OUTLINE_WIDTH, OUTLINE_WIDTH)
-	rarity_top.size = Vector2(inner_width, maxf(0.0, split_y - OUTLINE_WIDTH))
-	rarity_bottom.position = Vector2(OUTLINE_WIDTH, split_y)
-	rarity_bottom.size = Vector2(inner_width, maxf(0.0, card_size.y - split_y - OUTLINE_WIDTH))
+	CardVisualLayout.configure_rarity_panels(self)
 
 
 func _configure_art() -> void:
-	var data := card_data if card_data else CardData.new()
-	var base_size := Vector2(
-		card_size.x - art_margin * 2.0,
-		title_box.position.y - art_margin * 2.0
-	)
-	art_texture.position = Vector2.ONE * art_margin + data.art_offset
-	art_texture.size = base_size
-	art_texture.pivot_offset = art_texture.size * 0.5
-	art_texture.scale = Vector2.ONE * data.art_scale
+	CardVisualLayout.configure_art(self)
 
 
 func _apply_data() -> void:
-	var data := card_data if card_data else CardData.new()
+	var data := _get_display_data()
 	tier_indicator.max_tier = data.get_max_tier()
 	_card_tier = clampi(data.tier, 1, data.get_max_tier())
 	title_label.text = data.title
+	_fit_title_text()
 	_apply_description(data)
 	art_texture.texture = data.art
 	tier_indicator.tier = _card_tier
@@ -380,6 +362,49 @@ func _apply_data() -> void:
 	cooldown_stat.value = data.cooldown
 	_apply_rarity(data.rarity)
 	_fit_description_text()
+
+
+func _get_display_data() -> CardData:
+	if card_data:
+		return card_data
+	if Engine.is_editor_hint() and editor_preview_data:
+		return editor_preview_data
+	return CardData.new()
+
+
+func _refresh_card_visual() -> void:
+	if not is_inside_tree() or not is_node_ready():
+		return
+	_configure_layout()
+	_apply_data()
+
+
+func _refresh_card_visual_if_changed() -> void:
+	var signature := _make_editor_preview_signature()
+	if signature == _editor_preview_signature:
+		return
+	_editor_preview_signature = signature
+	_refresh_card_visual()
+
+
+func _make_editor_preview_signature() -> String:
+	var data := _get_display_data()
+	var parts := PackedStringArray([
+		str(title_side_margin),
+		data.resource_path,
+		data.title,
+		data.description,
+		str(data.art),
+		str(data.art_scale),
+		str(data.art_offset),
+		str(data.rarity),
+		str(data.tier),
+		str(data.attack),
+		str(data.health),
+		str(data.cooldown),
+		str(data.traits.size()),
+	])
+	return "|".join(parts)
 
 
 func _apply_description(data: CardData) -> void:
@@ -679,48 +704,20 @@ func reset_combat_visuals() -> void:
 
 
 func play_attack_to_impact(target_center: Vector2) -> void:
-	_stop_tweens()
-	_attack_start_position = global_position
-	_attack_start_z_index = z_index
-	var direction := (target_center - get_card_center()).normalized()
-	if direction == Vector2.ZERO:
-		direction = Vector2.UP
-	var anticipation_position := _attack_start_position - direction * attack_anticipation_distance
-	var charge_distance := (
-		_get_visual_radius_along(direction, attack_scale)
-		+ _get_visual_radius_along(-direction, 1.0)
-		+ attack_impact_margin
-	)
-	var charge_position := target_center - direction * charge_distance - card_size * 0.5
-	var aim_rotation := clampf(direction.x * attack_aim_rotation_degrees, -attack_aim_rotation_degrees, attack_aim_rotation_degrees)
-
-	z_index = COMBAT_Z_INDEX
-	_motion_tween = create_tween()
-	_motion_tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	_motion_tween.tween_property(self, "global_position", anticipation_position, attack_anticipation_duration)
-	_motion_tween.parallel().tween_property(card_surface, "scale", Vector2.ONE * attack_scale, attack_anticipation_duration)
-	_motion_tween.parallel().tween_property(card_surface, "rotation_degrees", aim_rotation, attack_anticipation_duration)
-	_motion_tween.tween_property(self, "global_position", charge_position, attack_charge_duration).set_trans(Tween.TRANS_BACK)
-	await _motion_tween.finished
+	await CardVisualCombatFeedback.play_attack_to_impact(self, target_center)
 
 
 func start_attack_return() -> void:
-	_attack_returning = true
-	_motion_tween = create_tween()
-	_motion_tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	_motion_tween.tween_property(self, "global_position", _attack_start_position, attack_return_duration)
-	_motion_tween.parallel().tween_property(card_surface, "scale", Vector2.ONE, attack_return_duration)
-	_motion_tween.parallel().tween_property(card_surface, "rotation_degrees", 0.0, attack_return_duration)
-	_motion_tween.finished.connect(_on_attack_return_finished)
+	CardVisualCombatFeedback.start_attack_return(self)
 
 
 func is_attack_returning() -> bool:
-	return _attack_returning
+	return attack_returning
 
 
 func _on_attack_return_finished() -> void:
-	_attack_returning = false
-	z_index = _attack_start_z_index
+	attack_returning = false
+	z_index = attack_start_z_index
 
 
 func play_hit_animation(attacker_center: Vector2) -> void:
@@ -729,27 +726,7 @@ func play_hit_animation(attacker_center: Vector2) -> void:
 
 
 func start_hit_animation(attacker_center: Vector2) -> Tween:
-	_stop_tweens()
-	visual_group.material = _hit_flash_material
-	_flash_hit()
-	var start_position := card_surface.position
-	var knockback_direction := (get_card_center() - attacker_center).normalized()
-	if knockback_direction == Vector2.ZERO:
-		knockback_direction = Vector2.DOWN
-	var shake_direction := Vector2(-knockback_direction.y, knockback_direction.x)
-	var knockback_position := start_position + knockback_direction * hit_knockback_distance
-
-	_motion_tween = create_tween()
-	_motion_tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	_motion_tween.tween_property(card_surface, "position", knockback_position, hit_duration * 0.35)
-	for shake_index in range(hit_shake_count):
-		var shake_sign := -1.0 if shake_index % 2 == 0 else 1.0
-		var shake_position := knockback_position + shake_direction * hit_shake_distance * shake_sign
-		_motion_tween.tween_property(card_surface, "position", shake_position, hit_duration / maxf(1.0, float(hit_shake_count)))
-		_motion_tween.parallel().tween_property(card_surface, "rotation_degrees", hit_rotation_shake_degrees * shake_sign, hit_duration / maxf(1.0, float(hit_shake_count)))
-	_motion_tween.tween_property(card_surface, "position", start_position, hit_duration * 0.35)
-	_motion_tween.parallel().tween_property(card_surface, "rotation_degrees", 0.0, hit_duration * 0.35)
-	return _motion_tween
+	return CardVisualCombatFeedback.start_hit_animation(self, attacker_center)
 
 
 func play_death_animation() -> void:
@@ -758,89 +735,27 @@ func play_death_animation() -> void:
 
 
 func play_survival_animation() -> void:
-	_stop_tweens()
-	var step_duration := survival_sway_duration / float(survival_sway_count + 1)
-	_motion_tween = create_tween()
-	_motion_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	for sway_index in range(survival_sway_count):
-		var sway_sign := -1.0 if sway_index % 2 == 0 else 1.0
-		_motion_tween.tween_property(
-			card_surface,
-			"rotation_degrees",
-			survival_rotation_degrees * sway_sign,
-			step_duration
-		)
-		if sway_index == 0:
-			_motion_tween.parallel().tween_property(
-				card_surface,
-				"scale",
-				Vector2.ONE * survival_pop_scale,
-				step_duration
-			)
-	_motion_tween.tween_property(card_surface, "rotation_degrees", 0.0, step_duration)
-	_motion_tween.parallel().tween_property(card_surface, "scale", Vector2.ONE, step_duration)
-	await _motion_tween.finished
+	await CardVisualCombatFeedback.play_survival_animation(self)
 
 
 func play_dodge_animation(direction: float) -> void:
-	_stop_tweens()
-	var dodge_sign := signf(direction)
-	if dodge_sign == 0.0:
-		dodge_sign = 1.0
-	var start_position := card_surface.position
-	var half_duration := dodge_duration * 0.5
-	_motion_tween = create_tween()
-	_motion_tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	_motion_tween.tween_property(
-		card_surface,
-		"position:x",
-		start_position.x + dodge_distance * dodge_sign,
-		half_duration
-	)
-	_motion_tween.parallel().tween_property(
-		card_surface,
-		"rotation_degrees",
-		dodge_rotation_degrees * dodge_sign,
-		half_duration
-	)
-	_motion_tween.tween_property(card_surface, "position:x", start_position.x, half_duration)
-	_motion_tween.parallel().tween_property(card_surface, "rotation_degrees", 0.0, half_duration)
-	await _motion_tween.finished
+	await CardVisualCombatFeedback.play_dodge_animation(self, direction)
 
 
 func _flash_hit() -> void:
-	if _flash_tween:
-		_flash_tween.kill()
-	if _buff_tween:
-		_buff_tween.kill()
-	_set_hit_flash_color(Color.WHITE)
-	_set_hit_flash_strength(1.0)
-	_flash_tween = create_tween()
-	_flash_tween.tween_interval(hit_flash_duration)
-	_flash_tween.tween_callback(_set_hit_flash_color.bind(ORANGE_COLOR))
-	_flash_tween.tween_interval(hit_orange_duration)
-	_flash_tween.tween_method(_set_hit_flash_strength, 1.0, 0.0, hit_flash_duration)
+	CardVisualCombatFeedback.flash_hit(self)
 
 
 func _set_hit_flash_color(color: Color) -> void:
-	visual_group.material = _hit_flash_material
-	var flash_material := visual_group.material as ShaderMaterial
-	if flash_material:
-		flash_material.set_shader_parameter("flash_color", color)
+	CardVisualCombatFeedback.set_hit_flash_color(self, color)
 
 
 func _set_hit_flash_strength(strength: float) -> void:
-	visual_group.material = _hit_flash_material
-	var flash_material := visual_group.material as ShaderMaterial
-	if flash_material:
-		flash_material.set_shader_parameter("flash_strength", strength)
+	CardVisualCombatFeedback.set_hit_flash_strength(self, strength)
 
 
 func _configure_feedback_materials() -> void:
-	_hit_flash_material = visual_group.material as ShaderMaterial
-	if _hit_flash_material:
-		_hit_flash_material = _hit_flash_material.duplicate() as ShaderMaterial
-		visual_group.material = _hit_flash_material
+	CardVisualCombatFeedback.configure_materials(self)
 
 
 func _get_visual_radius_along(direction: Vector2, scale_value: float) -> float:
@@ -856,30 +771,15 @@ func _get_visual_radius_along(direction: Vector2, scale_value: float) -> float:
 
 
 func _apply_rarity(rarity: CardData.Rarity) -> void:
-	var index := clampi(rarity, 0, RARITY_TOP_COLORS.size() - 1)
-	var top_style := rarity_top.get_theme_stylebox("panel").duplicate() as StyleBoxFlat
-	var bottom_style := rarity_bottom.get_theme_stylebox("panel").duplicate() as StyleBoxFlat
-	top_style.bg_color = RARITY_TOP_COLORS[index]
-	bottom_style.bg_color = RARITY_BOTTOM_COLORS[index]
-	rarity_top.add_theme_stylebox_override("panel", top_style)
-	rarity_bottom.add_theme_stylebox_override("panel", bottom_style)
+	CardVisualLayout.apply_rarity(self, rarity)
 
 
 func _fit_description_text() -> void:
-	var font := description_label.get_theme_font("normal_font")
-	var smallest := mini(description_min_font_size, description_max_font_size)
-	var largest := maxi(description_min_font_size, description_max_font_size)
-	for font_size in range(largest, smallest - 1, -1):
-		var text_size := font.get_multiline_string_size(
-			_description_plain_text,
-			HORIZONTAL_ALIGNMENT_CENTER,
-			description_label.size.x,
-			font_size
-		)
-		if text_size.y <= description_label.size.y:
-			description_label.add_theme_font_size_override("normal_font_size", font_size)
-			return
-	description_label.add_theme_font_size_override("normal_font_size", smallest)
+	CardVisualLayout.fit_description_text(self)
+
+
+func _fit_title_text() -> void:
+	CardVisualLayout.fit_title_text(self)
 
 
 func _on_mouse_entered() -> void:
@@ -924,6 +824,11 @@ func _start_drag() -> void:
 	if _current_slot:
 		_current_slot.release(self)
 		_current_slot = null
+	else:
+		for node in get_tree().get_nodes_in_group("card_slots"):
+			var slot: CardSlot = node as CardSlot
+			if slot:
+				slot.release(self)
 	_drag_offset = get_global_mouse_position() - global_position
 	_drag_tilt_target = 0.0
 	_stop_tweens()
@@ -978,6 +883,9 @@ func _stop_drag() -> void:
 		_motion_tween.tween_property(self, "global_position", target_slot.get_snap_position(card_size), snap_duration)
 		_motion_tween.finished.connect(_on_snap_finished)
 		return
+	if _is_over_sell_zone():
+		sell_requested.emit(self)
+		return
 	invalid_drop_requested.emit(self)
 
 
@@ -998,6 +906,15 @@ func _find_drop_slot() -> CardSlot:
 		if slot and slot.can_accept(self):
 			return slot
 	return null
+
+
+func _is_over_sell_zone() -> bool:
+	var card_center: Vector2 = get_card_center()
+	for node in get_tree().get_nodes_in_group("card_sell_zones"):
+		var zone: Control = node as Control
+		if zone and zone.visible and zone.get_global_rect().has_point(card_center):
+			return true
+	return false
 
 
 func _find_merge_target() -> CardVisual:
@@ -1027,7 +944,7 @@ func _on_pickup_sway_finished() -> void:
 
 func _stop_tweens() -> void:
 	_pickup_sway_active = false
-	_attack_returning = false
+	attack_returning = false
 	if _motion_tween:
 		_motion_tween.kill()
 	if _sway_tween:

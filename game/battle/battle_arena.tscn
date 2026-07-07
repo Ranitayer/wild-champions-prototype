@@ -1,4 +1,4 @@
-[gd_scene load_steps=17 format=3 uid="uid://cduxec6m7v3uw"]
+[gd_scene load_steps=22 format=3 uid="uid://cduxec6m7v3uw"]
 
 [ext_resource type="Script" uid="uid://ddsl6sjh4kyp2" path="res://game/battle/battle_arena.gd" id="1_arena"]
 [ext_resource type="Script" uid="uid://7fyfaow6q0j7" path="res://game/battle/battle_combat.gd" id="2_combat"]
@@ -16,6 +16,11 @@
 [ext_resource type="PackedScene" path="res://game/shop/wallet/shop_wallet.tscn" id="14_wallet"]
 [ext_resource type="Script" path="res://game/shop/shop_random.gd" id="15_shop_random"]
 [ext_resource type="Script" path="res://game/match/match_flow.gd" id="16_match_flow"]
+[ext_resource type="Script" path="res://game/network/network_manager.gd" id="17_network"]
+[ext_resource type="Script" path="res://game/network/network_debug_menu.gd" id="18_network_menu"]
+[ext_resource type="Script" path="res://game/ui/match_result_popup/match_result_popup.gd" id="19_result_popup"]
+[ext_resource type="Script" path="res://game/ui/initiative_roll_popup/initiative_roll_popup.gd" id="20_initiative_popup"]
+[ext_resource type="Script" path="res://game/shop/sell/shop_sell_manager.gd" id="21_sell_manager"]
 
 [node name="BattleArena" type="Control" unique_id=1328102770]
 custom_minimum_size = Vector2(875, 710)
@@ -78,11 +83,21 @@ script = ExtResource("2_combat")
 [node name="ShopTransition" type="Node" parent="."]
 script = ExtResource("7_shop")
 
+[node name="ShopSellManager" type="Node" parent="."]
+script = ExtResource("21_sell_manager")
+
 [node name="ShopRandom" type="Node" parent="."]
 script = ExtResource("15_shop_random")
 
 [node name="MatchFlow" type="Node" parent="."]
 script = ExtResource("16_match_flow")
+
+[node name="NetworkManager" type="Node" parent="."]
+script = ExtResource("17_network")
+
+[node name="NetworkDebugMenu" type="CanvasLayer" parent="."]
+layer = 200
+script = ExtResource("18_network_menu")
 
 [node name="ShopLayer" type="CanvasLayer" parent="."]
 layer = 50
@@ -165,3 +180,9 @@ font_size = 48
 
 [node name="EffectPopup" type="Node" parent="UILayer" unique_id=1160744893]
 script = ExtResource("6_effect_popup")
+
+[node name="MatchResultPopup" type="Node" parent="UILayer"]
+script = ExtResource("19_result_popup")
+
+[node name="InitiativeRollPopup" type="Node" parent="UILayer"]
+script = ExtResource("20_initiative_popup")

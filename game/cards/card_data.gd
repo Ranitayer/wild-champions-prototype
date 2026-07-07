@@ -1,3 +1,4 @@
+@tool
 class_name CardData
 extends Resource
 
@@ -17,6 +18,7 @@ enum Rarity {
 @export_range(0.1, 4.0, 0.05) var art_scale := 1.0
 @export var art_offset := Vector2.ZERO
 @export var rarity: Rarity = Rarity.COMMON
+@export var tags: Array[StringName] = []
 @export_range(1, MAX_TIER, 1) var tier := 1
 @export_range(0, 999, 1) var attack: int = 0
 @export_range(0, 999, 1) var health: int = 0

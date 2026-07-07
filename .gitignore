@@ -3,6 +3,9 @@
 /android/
 export_credentials.cfg
 
+# Local exports/build output
+Wild/
+
 # OS files
 .DS_Store
 Thumbs.db

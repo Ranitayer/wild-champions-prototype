@@ -13,6 +13,7 @@ signal before_attack(attacker_id: int, target_id: int)
 signal damage_applied(card_id: int, amount: int, remaining_health: int)
 signal effect_damage_applied(source_id: int, target_id: int, amount: int, remaining_health: int)
 signal card_died(card_id: int)
+signal combat_won(winner_team: int)
 signal combat_finished
 
 @export_range(0.1, 5.0, 0.1) var cooldown_tick_seconds := 1.0
@@ -26,12 +27,14 @@ signal combat_finished
 
 var _running := false
 var _bindings_by_id: Dictionary = {}
+var _last_winner_team := -1
+var _run_token := 0
 
 
-func start_combat(battle_seed: int = 0, snapshot: BattleBoardSnapshot = null) -> bool:
+func start_combat(battle_seed: int = 0, snapshot: BattleBoardSnapshot = null, favored_team: int = CardSlot.TEAM_PLAYER) -> bool:
 	if _running:
 		return false
-	_run_combat(battle_seed, snapshot)
+	_run_combat(battle_seed, snapshot, favored_team)
 	return true
 
 
@@ -43,13 +46,30 @@ func is_running() -> bool:
 	return _running
 
 
-func _run_combat(battle_seed: int, snapshot: BattleBoardSnapshot) -> void:
+func force_stop() -> void:
+	_run_token += 1
+	for binding_value in _bindings_by_id.values():
+		var binding: BattleCardBinding = binding_value as BattleCardBinding
+		if binding and is_instance_valid(binding.visual):
+			binding.visual.set_interaction_blocked(false)
+	_bindings_by_id.clear()
+	_running = false
+
+
+func _run_combat(battle_seed: int, snapshot: BattleBoardSnapshot, favored_team: int) -> void:
+	_run_token += 1
+	var token: int = _run_token
 	_running = true
 	var active_snapshot: BattleBoardSnapshot = snapshot if snapshot else get_board_snapshot()
 	var states: Array[BattleCardState] = _build_battle_states(active_snapshot)
-	var events: Array[Dictionary] = BattleSimulator.new().run(states, battle_seed)
+	var events: Array[BattleEvent] = BattleSimulator.new().run(states, battle_seed, favored_team)
+	_last_winner_team = _get_winner_team(states)
 	for event in events:
+		if token != _run_token:
+			return
 		await _play_event(event)
+	if token != _run_token:
+		return
 	_finish_combat()
 
 
@@ -78,36 +98,36 @@ func _find_slot(team: int, slot_index: int) -> CardSlot:
 	return null
 
 
-func _play_event(event: Dictionary) -> void:
-	match event["type"]:
-		"combat_started":
+func _play_event(event: BattleEvent) -> void:
+	match event.type:
+		BattleEvent.COMBAT_STARTED:
 			combat_started.emit()
-		"tick":
-			await _play_tick(event)
-		"buff_applied":
-			await _play_buff(event)
-		"temporary_attack_applied":
-			await _play_temporary_attack(event)
-		"before_attack":
-			await _play_before_attack(event)
-		"attack_missed":
-			await _play_attack_missed(event)
-		"damage_applied":
-			await _play_damage(event)
-		"effect_damage_group":
-			await _play_effect_damage_group(event)
-		"effect_triggered":
-			await _play_effect_triggered(event)
-		"heal_applied":
-			await _play_heal(event)
-		"poison_applied":
-			await _play_poison_applied(event)
-		"poison_damage":
-			await _play_poison_damage(event)
-		"death_prevented":
-			await _play_death_prevented(event)
-		"card_died":
-			_play_death(event)
+		BattleEvent.TICK:
+			await _play_tick(event.data)
+		BattleEvent.BUFF_APPLIED:
+			await _play_buff(event.data)
+		BattleEvent.TEMPORARY_ATTACK_APPLIED:
+			await _play_temporary_attack(event.data)
+		BattleEvent.BEFORE_ATTACK:
+			await _play_before_attack(event.data)
+		BattleEvent.ATTACK_MISSED:
+			await _play_attack_missed(event.data)
+		BattleEvent.DAMAGE_APPLIED:
+			await _play_damage(event.data)
+		BattleEvent.EFFECT_DAMAGE_GROUP:
+			await _play_effect_damage_group(event.data)
+		BattleEvent.EFFECT_TRIGGERED:
+			await _play_effect_triggered(event.data)
+		BattleEvent.HEAL_APPLIED:
+			await _play_heal(event.data)
+		BattleEvent.POISON_APPLIED:
+			await _play_poison_applied(event.data)
+		BattleEvent.POISON_DAMAGE:
+			await _play_poison_damage(event.data)
+		BattleEvent.DEATH_PREVENTED:
+			await _play_death_prevented(event.data)
+		BattleEvent.CARD_DIED:
+			_play_death(event.data)
 
 
 func _play_tick(event: Dictionary) -> void:
@@ -286,13 +306,15 @@ func _play_effect_damage_group(event: Dictionary) -> void:
 	var hit_tweens: Array[Tween] = []
 	var hits: Array = event["hits"]
 	for hit_value in hits:
-		var hit: Dictionary = hit_value
-		var target_id := int(hit["target_id"])
+		var hit: BattleEffectHit = hit_value as BattleEffectHit
+		if not hit:
+			continue
+		var target_id := hit.target_id
 		var target := _get_binding(target_id)
 		if not target:
 			continue
-		var damage := int(hit["damage"])
-		var remaining_health := int(hit["target_health"])
+		var damage := hit.damage
+		var remaining_health := hit.target_health
 		target.visual.set_health_value(remaining_health)
 		damage_applied.emit(target_id, damage, remaining_health)
 		effect_damage_applied.emit(source_id, target_id, damage, remaining_health)
@@ -348,4 +370,23 @@ func _finish_combat() -> void:
 			binding.visual.set_interaction_blocked(false)
 	_bindings_by_id.clear()
 	_running = false
+	if _last_winner_team >= 0:
+		combat_won.emit(_last_winner_team)
 	combat_finished.emit()
+
+
+func _get_winner_team(states: Array[BattleCardState]) -> int:
+	var player_alive := false
+	var enemy_alive := false
+	for state in states:
+		if not state.is_alive():
+			continue
+		if state.team == CardSlot.TEAM_PLAYER:
+			player_alive = true
+		elif state.team == CardSlot.TEAM_ENEMY:
+			enemy_alive = true
+	if player_alive and not enemy_alive:
+		return CardSlot.TEAM_PLAYER
+	if enemy_alive and not player_alive:
+		return CardSlot.TEAM_ENEMY
+	return -1

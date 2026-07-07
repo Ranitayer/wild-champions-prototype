@@ -33,6 +33,7 @@ title = "STAGEROO"
 description = "Start of combat: Adjacent cards get +1 Attack."
 art = ExtResource("2_art")
 rarity = 2
+tags = Array[StringName]([&"animal"])
 attack = 4
 health = 4
 cooldown = 3

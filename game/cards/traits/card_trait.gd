@@ -1,3 +1,4 @@
+@tool
 class_name CardTrait
 extends Resource
 
@@ -34,6 +35,10 @@ func get_outgoing_poison_amount(_trait_value: int) -> int:
 
 func get_incoming_attack_miss_chance(_trait_value: int) -> float:
 	return 0.0
+
+
+func uses_lowest_health_target(_trait_value: int) -> bool:
+	return false
 
 
 func get_attack_overflow_damage(

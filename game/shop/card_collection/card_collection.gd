@@ -36,7 +36,7 @@ const DARK_COLOR := Color("151d28")
 @onready var cards_grid: GridContainer = %CardsGrid
 @onready var animator: CardCollectionAnimator = %Animator
 
-var _entries: Array[Dictionary] = []
+var _entries: Array[CardCollectionEntry] = []
 var _active_drags: Dictionary = {}
 var _pending_merges: Dictionary = {}
 var _collecting: Dictionary = {}
@@ -152,7 +152,7 @@ func set_choice_locked(locked: bool) -> void:
 func _return_to_ghost(card: CardVisual, active_drag: Dictionary) -> void:
 	var ghost := instance_from_id(int(active_drag.get("ghost_id", 0))) as Control
 	if not ghost:
-		var fallback_entry: Dictionary = active_drag["entry"]
+		var fallback_entry: CardCollectionEntry = active_drag["entry"] as CardCollectionEntry
 		_remove_active_drag(card.get_instance_id())
 		_entries.append(fallback_entry)
 		card.queue_free()
@@ -171,14 +171,14 @@ func _return_to_ghost(card: CardVisual, active_drag: Dictionary) -> void:
 	await tween.finished
 	if not is_instance_valid(card) or not is_instance_valid(ghost):
 		return
-	var entry: Dictionary = active_drag["entry"]
+	var entry: CardCollectionEntry = active_drag["entry"] as CardCollectionEntry
 	var grid_index := ghost.get_index()
 	ghost.get_parent().remove_child(ghost)
 	ghost.queue_free()
 	_active_drags.erase(card.get_instance_id())
 	_entries.append(entry)
 	_entries.sort_custom(_sort_entries)
-	card.set_meta("collection_entry_id", int(entry["id"]))
+	card.set_meta("collection_entry_id", entry.id)
 	card.set_meta("collection_hover_scale", card.hover_scale)
 	card.set_meta("collection_hover_lift", card.hover_lift)
 	card.hover_scale = preview_hover_scale
@@ -197,7 +197,7 @@ func _disconnect_drag_outcomes(card: CardVisual) -> void:
 
 func _add_entry(data: CardData, tier: int) -> void:
 	var old_positions := _capture_entry_positions()
-	_entries.append({"id": _next_entry_id, "data": data, "tier": tier})
+	_entries.append(CardCollectionEntry.new(_next_entry_id, data, tier))
 	_next_entry_id += 1
 	if cards_panel.visible:
 		_reorganize(old_positions)
@@ -239,13 +239,13 @@ func _refresh_cards() -> void:
 		existing[int(card.get_meta("collection_entry_id"))] = card
 	var kept := {}
 	for index in range(_entries.size()):
-		var entry: Dictionary = _entries[index]
-		var entry_id := int(entry["id"])
+		var entry: CardCollectionEntry = _entries[index]
+		var entry_id := entry.id
 		var card := existing.get(entry_id) as CardVisual
 		if not card:
 			card = _create_preview(entry)
 		else:
-			card.set_card_tier(int(entry["tier"]))
+			card.set_card_tier(entry.tier)
 		kept[entry_id] = true
 		cards_grid.move_child(card, index)
 	for entry_id in existing:
@@ -256,10 +256,10 @@ func _refresh_cards() -> void:
 		stale_card.queue_free()
 
 
-func _create_preview(entry: Dictionary) -> CardVisual:
+func _create_preview(entry: CardCollectionEntry) -> CardVisual:
 	var card := CARD_SCENE.instantiate() as CardVisual
-	var entry_id := int(entry["id"])
-	card.card_data = entry["data"] as CardData
+	var entry_id := entry.id
+	card.card_data = entry.data
 	card.set_meta("collection_entry_id", entry_id)
 	card.set_meta("collection_hover_scale", card.hover_scale)
 	card.set_meta("collection_hover_lift", card.hover_lift)
@@ -267,7 +267,7 @@ func _create_preview(entry: Dictionary) -> CardVisual:
 	card.hover_lift = preview_hover_lift
 	card.drag_started.connect(_on_preview_drag_started.bind(entry_id))
 	cards_grid.add_child(card)
-	card.set_card_tier(int(entry["tier"]))
+	card.set_card_tier(entry.tier)
 	card.tier_changed.connect(_on_preview_tier_changed.bind(entry_id))
 	card.merge_animator.merge_finished.connect(
 		_on_stored_preview_merge_finished.bind(entry_id)
@@ -275,21 +275,21 @@ func _create_preview(entry: Dictionary) -> CardVisual:
 	return card
 
 
-func _sort_entries(left: Dictionary, right: Dictionary) -> bool:
-	var left_data := left["data"] as CardData
-	var right_data := right["data"] as CardData
+func _sort_entries(left: CardCollectionEntry, right: CardCollectionEntry) -> bool:
+	var left_data := left.data
+	var right_data := right.data
 	if left_data.rarity != right_data.rarity:
 		return left_data.rarity > right_data.rarity
-	if int(left["tier"]) != int(right["tier"]):
-		return int(left["tier"]) > int(right["tier"])
+	if left.tier != right.tier:
+		return left.tier > right.tier
 	if left_data.title != right_data.title:
 		return left_data.title.naturalnocasecmp_to(right_data.title) < 0
-	return int(left["id"]) < int(right["id"])
+	return left.id < right.id
 
 
 func _on_preview_drag_started(card: CardVisual, entry_id: int) -> void:
 	var entry := _find_entry(entry_id)
-	if entry.is_empty():
+	if not entry:
 		return
 	var ghost := GHOST_SCENE.instantiate() as Control
 	ghost.custom_minimum_size = CardMetrics.SIZE
@@ -298,7 +298,7 @@ func _on_preview_drag_started(card: CardVisual, entry_id: int) -> void:
 	cards_grid.add_child(ghost)
 	cards_grid.move_child(ghost, grid_index)
 	_active_drags[card.get_instance_id()] = {
-		"entry": entry.duplicate(true),
+		"entry": entry.duplicate_entry(),
 		"ghost_id": ghost.get_instance_id(),
 	}
 	_remove_entry(entry_id)
@@ -345,8 +345,8 @@ func _on_stored_preview_merge_finished(target: CardVisual, _entry_id: int) -> vo
 
 func _on_preview_tier_changed(_card: CardVisual, tier: int, entry_id: int) -> void:
 	var entry := _find_entry(entry_id)
-	if not entry.is_empty():
-		entry["tier"] = tier
+	if entry:
+		entry.tier = tier
 
 
 func _finalize_departure(card_instance_id: int) -> void:
@@ -354,6 +354,11 @@ func _finalize_departure(card_instance_id: int) -> void:
 	if active_drag.is_empty():
 		return
 	_remove_active_drag(card_instance_id)
+
+
+func forget_dragged_card(card: CardVisual) -> void:
+	if is_instance_valid(card):
+		_finalize_departure(card.get_instance_id())
 
 
 func _remove_active_drag(card_instance_id: int) -> void:
@@ -484,13 +489,13 @@ func _get_previews() -> Array[CardVisual]:
 
 func _remove_entry(entry_id: int) -> void:
 	for index in range(_entries.size()):
-		if int(_entries[index]["id"]) == entry_id:
+		if _entries[index].id == entry_id:
 			_entries.remove_at(index)
 			return
 
 
-func _find_entry(entry_id: int) -> Dictionary:
+func _find_entry(entry_id: int) -> CardCollectionEntry:
 	for entry in _entries:
-		if int(entry["id"]) == entry_id:
+		if entry.id == entry_id:
 			return entry
-	return {}
+	return null

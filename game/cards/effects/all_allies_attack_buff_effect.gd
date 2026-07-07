@@ -7,14 +7,13 @@ extends CardEffect
 func apply_start_of_combat(
 	source: BattleCardState,
 	cards: Array[BattleCardState],
-	events: Array[Dictionary]
+	events: Array[BattleEvent]
 ) -> void:
 	for target in cards:
 		if target == source or target.team != source.team or not target.is_alive():
 			continue
 		var result := target.add_permanent_attack(amount)
-		events.append({
-			"type": "buff_applied",
+		BattleEvent.add(events, BattleEvent.BUFF_APPLIED, {
 			"source_id": source.card_id,
 			"target_id": target.card_id,
 			"stat": "attack",

@@ -33,6 +33,7 @@ art = ExtResource("2_art")
 art_scale = 1.6
 art_offset = Vector2(0, 10)
 rarity = 1
+tags = Array[StringName]([&"animal"])
 attack = 2
 health = 4
 cooldown = 3

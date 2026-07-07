@@ -9,7 +9,7 @@ const UNLOCKED_COLOR := Color("de9e41")
 const RADIUS := 6.0
 
 @export_group("Layout")
-@export_range(0.0, 40.0, 1.0) var top_margin := 5.0:
+@export_range(0.0, 80.0, 1.0) var top_margin := 12.0:
 	set(value):
 		top_margin = maxf(0.0, value)
 		_update_layout()

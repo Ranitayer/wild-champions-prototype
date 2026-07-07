@@ -5,7 +5,7 @@ extends Resource
 func apply_start_of_combat(
 	_source: BattleCardState,
 	_cards: Array[BattleCardState],
-	_events: Array[Dictionary]
+	_events: Array[BattleEvent]
 ) -> void:
 	pass
 
@@ -14,7 +14,7 @@ func apply_before_attack(
 	_source: BattleCardState,
 	_target: BattleCardState,
 	_cards: Array[BattleCardState],
-	_events: Array[Dictionary]
+	_events: Array[BattleEvent]
 ) -> void:
 	pass
 

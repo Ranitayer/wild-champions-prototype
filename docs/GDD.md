@@ -35,9 +35,11 @@ The exact deck-building, matchmaking, rewards, and progression rules are not yet
 - Pressing Space starts the prototype battle.
 - Cards count down their cooldowns. When a cooldown reaches 0, that card attacks and its cooldown resets.
 - If multiple cards become ready at the same time, attacks resolve one at a time from left to right.
+- At battle start, an initiative roll chooses which player is favored for same-cooldown attack order.
 - While an attack or effect is resolving, cooldown ticking pauses.
 - Random combat outcomes use a deterministic battle seed so identical inputs can be replayed.
 - Targeting checks the card directly across first, then searches left, then right, expanding outward until it finds a valid enemy card.
+- Predator changes targeting to the lowest-health enemy, with slot order used as the tie-breaker.
 - Both sides must be reproducible from saved battle data.
 - Results should expose enough information for players to learn from losses.
 - Randomness, triggered effects, and win conditions are TBD.
@@ -52,6 +54,7 @@ Cards are the primary strategic building blocks. Their exact role is TBD: they m
 - Cards have Common, Uncommon, Rare, Epic, and Mythic rarities with distinct top and bottom colors.
 - Common, Uncommon, and Rare cards have three merge tiers. Epic and Mythic cards have two. Two identical cards of the same tier merge into the next tier, up to that rarity's cap.
 - Card data is stored as Resources containing title, description, art, rarity, attack, health, and cooldown.
+- Cards have one or two tags; current tags include Animal and Spider.
 - Permanent Attack changes update the main Attack stat. Limited-duration Attack changes use a separate temporary Attack stat and expire after their configured attack uses.
 - Traits are reusable valued card abilities, can be acquired during play, and appear in `#de9e41` text. Traits normally cap at 5 unless their rule explicitly allows unlimited levels.
 - When a poisoned card is attacked, existing Poison deals its value as extra damage, then decreases by 1. Poison gained from that attack starts triggering on later attacks.
@@ -65,6 +68,7 @@ Current prototype card:
 - **Seraphina:** Rare, 2 Cooldown, Survivalist. Tier 1: 2 Attack, 3 Health, Poison 2. Tier 2: 4 Attack, 5 Health, Poison 2. Tier 3: 5 Attack, 7 Health, Poison 4.
 - **Batteroo:** Common, 1 Cooldown, Flying. Tier 1: 1 Attack, 1 Health. Tier 2: 2 Attack, 2 Health. Tier 3: 4 Attack, 3 Health.
 - **Nimble:** Epic, 1 Cooldown. Tier 1: 4 Attack, 2 Health. Tier 2: 6 Attack, 4 Health, gains Overwhelm. Every second attack gains temporary Attack equal to its permanent Attack for that attack. Overwhelm splits excess lethal attack damage across adjacent enemies, with odd damage favoring the left.
+- **Matriarch:** Mythic, 2 Cooldown, Predator. Tier 1: 4 Attack, 9 Health. Tier 2: 7 Attack, 12 Health, gains Overwhelm.
 
 To define:
 
@@ -78,13 +82,16 @@ To define:
 ## Shop and Collection
 
 - Pressing F2 transitions the prototype arena into its shop layout.
-- Players currently enter the prototype shop with 50 currency.
+- Players currently enter the prototype shop with 10 currency.
+- After battle, the winner gains 5 currency and the loser gains 8 currency.
 - The Wild Booster Pack costs 5 and offers a choice of one from three cards.
 - The Wilder Booster Pack costs 10 and grants one card with no Common results.
 - The shop also offers one individual card priced by rarity: Common 3, Uncommon 8, Rare 12, Epic 25, and Mythic 40.
 - Shop rewards use a seeded random sequence so the same seed and card catalog reproduce the same rolls.
 - Booster rewards are rolled and validated before payment. Payment completes before the pack or card acquisition animation begins.
 - Opening a booster closes and locks the card collection until the player takes a reward.
+- In shop, owned cards show sell value and can be sold by dragging them into the sell slot.
+- Sell values by rarity/tier are: Common 1/2/4, Uncommon 3/6/12, Rare 5/10/20, Epic 10/25, Mythic 15/40.
 - Cards may finish a drag only by entering an open arena slot or merging with a valid matching card.
 - Cards released elsewhere return to the player's card collection.
 - The persistent Cards button opens a two-column, scrollable view of collected cards. Collected cards can be dragged back into play.
@@ -132,6 +139,11 @@ The first playable target should prove one complete loop: configure a legal setu
 
 ## Change Log
 
+- 2026-07-07: Added Matriarch and Predator lowest-health targeting.
+- 2026-07-07: Added card tags and title-box tag icons.
+- 2026-07-06: Set prototype match economy to 10 starting currency, +5 for winner, and +8 for loser.
+- 2026-07-06: Added battle-start initiative roll for same-cooldown attack order.
+- 2026-07-06: Added shop card selling with rarity/tier sell values.
 - 2026-07-06: Defined prototype shop prices, starting currency, seeded reward rolls, validated payment flow, and collection locking during booster choices.
 - 2026-07-05: Added the shop layout transition and persistent card collection for invalid card drops.
 - 2026-07-05: Capped Epic/Mythic cards at Tier 2 and added Nimble Tier 2 with Overwhelm.

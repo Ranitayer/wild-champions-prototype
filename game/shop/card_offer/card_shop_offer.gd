@@ -17,12 +17,18 @@ var _card: CardVisual
 var _price_stat: StatCircle
 var _motion_tween: Tween
 var _purchasing := false
+var _purchase_request_id := 0
+var _pending_purchase_request_id := 0
+var _pending_purchase_valid := false
+var _pending_purchase_received := false
+var _network_manager: NetworkManager
 
 @onready var floating_effect: FloatingEffect = $FloatingEffect
 
 
 func _enter_tree() -> void:
 	add_to_group("shop_purchasables")
+	add_to_group("card_shop_offers")
 
 
 func _ready() -> void:
@@ -31,6 +37,9 @@ func _ready() -> void:
 	size = CardMetrics.SIZE
 	_create_price_stat()
 	_roll_offer()
+	_network_manager = get_tree().get_first_node_in_group("network_managers") as NetworkManager
+	if _network_manager:
+		_network_manager.purchase_validated.connect(_on_purchase_validated)
 	get_viewport().size_changed.connect(_position_offer)
 
 
@@ -57,6 +66,11 @@ func play_shop_open() -> void:
 func restore_after_reward() -> void:
 	if is_instance_valid(_card):
 		play_shop_open()
+
+
+func reroll_offer() -> void:
+	_roll_offer()
+	_position_offer()
 
 
 func play_shop_close() -> void:
@@ -87,6 +101,7 @@ func _roll_offer() -> void:
 		_card.queue_free()
 	_card = CARD_SCENE.instantiate() as CardVisual
 	_card.card_data = cards[0]
+	_card.set_meta("shop_offer_card", true)
 	add_child(_card)
 	move_child(_card, 0)
 	_card.set_card_tier(1)
@@ -122,6 +137,12 @@ func _purchase(card: CardVisual) -> void:
 		_start_card_float()
 		_purchasing = false
 		return
+	var host_validated: bool = await _validate_purchase_with_host(card)
+	if not host_validated:
+		card.set_interaction_blocked(false)
+		_start_card_float()
+		_purchasing = false
+		return
 	var purchase_succeeded: bool = await wallet.try_spend(
 		_price_stat.value,
 		_price_stat,
@@ -134,9 +155,11 @@ func _purchase(card: CardVisual) -> void:
 		return
 	card.set_interaction_blocked(false)
 	card.clear_drag_guard()
+	card.remove_meta("shop_offer_card")
 	card.remove_hover_control(_price_stat)
 	_price_stat.reparent(self, false)
 	_price_stat.hide()
+	card.tier_indicator.top_margin = CardVisual.TIER_INDICATOR_DEFAULT_TOP_MARGIN
 	card.reparent(get_tree().current_scene, true)
 	_card = null
 	var collection: CardCollection = _get_card_collection()
@@ -151,7 +174,7 @@ func _configure_offer_card(card: CardVisual) -> void:
 	if not card.hover_changed.is_connected(_on_card_hover_changed):
 		card.hover_changed.connect(_on_card_hover_changed)
 	card.set_drag_guard(_request_purchase.bind(card))
-	card.tier_indicator.top_margin = 52.0
+	card.tier_indicator.top_margin = CardVisual.TIER_INDICATOR_WITH_PRICE_TOP_MARGIN
 	_price_stat.reparent(card.card_surface, false)
 	_position_price_stat()
 	card.add_hover_control(_price_stat)
@@ -168,6 +191,36 @@ func _get_wallet() -> ShopWallet:
 func _get_random_generator() -> RandomNumberGenerator:
 	var shop_random: ShopRandom = get_tree().get_first_node_in_group("shop_random") as ShopRandom
 	return shop_random.generator if shop_random else null
+
+
+func _validate_purchase_with_host(card: CardVisual) -> bool:
+	if not _network_manager or not _network_manager.is_connected_to_peer() or _network_manager.is_host():
+		return true
+	if not offer_pool or offer_pool.resource_path.is_empty() or not card.card_data or card.card_data.resource_path.is_empty():
+		return false
+	_purchase_request_id += 1
+	_pending_purchase_request_id = _purchase_request_id
+	_pending_purchase_valid = false
+	_pending_purchase_received = false
+	if not _network_manager.request_card_purchase_validation(
+		_pending_purchase_request_id,
+		offer_pool.resource_path,
+		card.card_data.resource_path,
+		_price_stat.value
+	):
+		return false
+	var timeout_frames: int = 180
+	while not _pending_purchase_received and _network_manager.is_connected_to_peer() and timeout_frames > 0:
+		timeout_frames -= 1
+		await get_tree().process_frame
+	return _pending_purchase_received and _pending_purchase_valid
+
+
+func _on_purchase_validated(request_id: int, valid: bool) -> void:
+	if request_id != _pending_purchase_request_id:
+		return
+	_pending_purchase_valid = valid
+	_pending_purchase_received = true
 
 
 func _position_price_stat() -> void:

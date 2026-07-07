@@ -8,14 +8,13 @@ func apply_before_attack(
 	source: BattleCardState,
 	_target: BattleCardState,
 	_cards: Array[BattleCardState],
-	events: Array[Dictionary]
+	events: Array[BattleEvent]
 ) -> void:
 	if source.attacks_made % attack_interval != 0:
 		return
 	var amount := source.attack
 	var result := source.add_temporary_attack(amount, 1)
-	events.append({
-		"type": "temporary_attack_applied",
+	BattleEvent.add(events, BattleEvent.TEMPORARY_ATTACK_APPLIED, {
 		"source_id": source.card_id,
 		"target_id": source.card_id,
 		"amount": amount,
