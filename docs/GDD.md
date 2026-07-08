@@ -1,7 +1,7 @@
 # Wild Champions - Game Design Document
 
 Status: Living draft  
-Last updated: 2026-07-06
+Last updated: 2026-07-08
 
 ## Game Summary
 
@@ -27,6 +27,15 @@ Current high-level draft:
 5. Review the result and improve the setup.
 
 The exact deck-building, matchmaking, rewards, and progression rules are not yet defined.
+
+## Match Structure
+
+- A match is best of 15 battle rounds.
+- First player to 8 round wins wins the match.
+- If the score is tied after 15 rounds, the match continues in sudden death until one player wins a round.
+- The prototype scoreboard stays visible during shop and battle, showing each player's round wins.
+- After each battle round, a winner popup resolves into a score marker for the winning player before the next shop phase.
+- When a match winner is declared, the final winner popup locks card and shop interaction until the player chooses Restart or Quit.
 
 ## Battle
 
@@ -139,6 +148,9 @@ The first playable target should prove one complete loop: configure a legal setu
 
 ## Change Log
 
+- 2026-07-08: Added best-of-15 match scoring direction with first-to-8 win target and visible round scoreboard.
+- 2026-07-08: Added final match winner popup behavior that locks card and shop interaction until Restart or Quit.
+- 2026-07-08: Clarified battle winner popup score-marker flow into the match scoreboard.
 - 2026-07-07: Added Matriarch and Predator lowest-health targeting.
 - 2026-07-07: Added card tags and title-box tag icons.
 - 2026-07-06: Set prototype match economy to 10 starting currency, +5 for winner, and +8 for loser.

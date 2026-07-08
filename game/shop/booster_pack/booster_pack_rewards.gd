@@ -160,7 +160,11 @@ func _request_host_rewards(data: BoosterPackData) -> Array[CardData]:
 		await get_tree().process_frame
 	if not _pending_reward_received:
 		return []
-	return _cards_from_payload(_pending_reward_payload)
+	var rewards: Array[CardData] = _cards_from_payload(_pending_reward_payload)
+	var shop_random: ShopRandom = get_tree().get_first_node_in_group("shop_random") as ShopRandom
+	if shop_random:
+		shop_random.record_booster_result(data, rewards)
+	return rewards
 
 
 func _on_booster_rewards_received(request_id: int, reward_payload: Array) -> void:

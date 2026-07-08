@@ -1,4 +1,4 @@
-[gd_scene load_steps=22 format=3 uid="uid://cduxec6m7v3uw"]
+[gd_scene load_steps=23 format=3 uid="uid://cduxec6m7v3uw"]
 
 [ext_resource type="Script" uid="uid://ddsl6sjh4kyp2" path="res://game/battle/battle_arena.gd" id="1_arena"]
 [ext_resource type="Script" uid="uid://7fyfaow6q0j7" path="res://game/battle/battle_combat.gd" id="2_combat"]
@@ -21,6 +21,7 @@
 [ext_resource type="Script" path="res://game/ui/match_result_popup/match_result_popup.gd" id="19_result_popup"]
 [ext_resource type="Script" path="res://game/ui/initiative_roll_popup/initiative_roll_popup.gd" id="20_initiative_popup"]
 [ext_resource type="Script" path="res://game/shop/sell/shop_sell_manager.gd" id="21_sell_manager"]
+[ext_resource type="Script" path="res://game/ui/match_scoreboard/match_scoreboard.gd" id="22_scoreboard"]
 
 [node name="BattleArena" type="Control" unique_id=1328102770]
 custom_minimum_size = Vector2(875, 710)
@@ -101,6 +102,15 @@ script = ExtResource("18_network_menu")
 
 [node name="ShopLayer" type="CanvasLayer" parent="."]
 layer = 50
+
+[node name="MatchScoreboard" type="Control" parent="ShopLayer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("22_scoreboard")
 
 [node name="BoosterPackRewards" type="Control" parent="ShopLayer"]
 layout_mode = 3

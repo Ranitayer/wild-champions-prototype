@@ -25,6 +25,7 @@ var _button_tweens: Dictionary = {}
 
 
 func _ready() -> void:
+	add_to_group("network_debug_menus")
 	_build_ui()
 	_connect_network()
 	show()

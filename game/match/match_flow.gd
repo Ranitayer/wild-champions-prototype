@@ -23,6 +23,7 @@ const CARD_FONT := preload("res://assets/fonts/cardfont.ttf")
 @export var shop_random_path: NodePath = ^"../ShopRandom"
 @export var result_popup_path: NodePath = ^"../UILayer/MatchResultPopup"
 @export var initiative_popup_path: NodePath = ^"../UILayer/InitiativeRollPopup"
+@export var scoreboard_path: NodePath = ^"../ShopLayer/MatchScoreboard"
 @export_range(0, 999, 1) var win_coin_reward := 5
 @export_range(0, 999, 1) var lose_coin_reward := 8
 @export var solo_test_auto_ready := true
@@ -50,6 +51,7 @@ var _button_tween: Tween
 @onready var shop_random: ShopRandom = get_node_or_null(shop_random_path) as ShopRandom
 @onready var result_popup: MatchResultPopup = get_node_or_null(result_popup_path) as MatchResultPopup
 @onready var initiative_popup: InitiativeRollPopup = get_node_or_null(initiative_popup_path) as InitiativeRollPopup
+@onready var scoreboard: MatchScoreboard = get_node_or_null(scoreboard_path) as MatchScoreboard
 
 
 func _ready() -> void:
@@ -61,12 +63,16 @@ func _ready() -> void:
 	combat.combat_finished.connect(_on_combat_finished)
 	shop_transition.shop_state_changed.connect(_on_shop_state_changed)
 	booster_rewards.activity_changed.connect(_on_booster_reward_activity_changed)
+	if scoreboard:
+		scoreboard.restart_requested.connect(_on_scoreboard_restart_requested)
+		scoreboard.quit_requested.connect(_on_scoreboard_quit_requested)
 	if network_manager:
 		network_manager.connected.connect(_on_network_connected)
 		network_manager.remote_ready.connect(_on_network_remote_ready)
 		network_manager.shop_seed_received.connect(_on_shop_seed_received)
 		network_manager.player_name_received.connect(_on_player_name_received)
 		network_manager.disconnected.connect(_on_network_disconnected)
+	_update_scoreboard_names()
 
 
 func get_local_board_payload() -> Array[BattleBoardCardSnapshot]:
@@ -99,6 +105,7 @@ func _on_ready_pressed() -> void:
 		return
 	if local_ready:
 		return
+	_update_scoreboard_names()
 	local_ready = true
 	local_board_payload = combat.get_board_snapshot().to_network_payload(CardSlot.TEAM_PLAYER)
 	if _has_network_peer():
@@ -148,11 +155,26 @@ func _on_combat_finished() -> void:
 	var winner_team: int = _winner_team
 	var restore_payload: Array[BattleBoardCardSnapshot] = _typed_payload(local_board_payload)
 	reset_ready()
+	InputModalLock.set_locked(get_tree(), true)
 	if result_popup and winner_team >= 0:
-		await result_popup.show_winner(_get_winner_name(winner_team))
+		var has_score_target: bool = scoreboard != null
+		var target_position: Vector2 = scoreboard.get_next_marker_position(winner_team) if has_score_target else Vector2.ZERO
+		var arrived_callback: Callable = Callable()
+		if scoreboard:
+			arrived_callback = scoreboard.add_win.bind(winner_team, true)
+		await result_popup.show_winner(
+			_get_winner_name(winner_team),
+			winner_team == CardSlot.TEAM_PLAYER,
+			target_position,
+			has_score_target,
+			arrived_callback
+		)
 	elif results_duration > 0.0:
 		await get_tree().create_timer(results_duration).timeout
 	_apply_result_coins(winner_team)
+	if scoreboard and scoreboard.is_match_over():
+		_update_ready_button()
+		return
 	_set_phase(Phase.SHOP)
 	_lock_slots(false)
 	var arena: BattleArena = get_parent() as BattleArena
@@ -162,6 +184,7 @@ func _on_combat_finished() -> void:
 	_sync_host_shop_seed()
 	await shop_transition.set_shop_active(true)
 	await _set_inventory_locked(false)
+	InputModalLock.set_locked(get_tree(), false)
 	_update_ready_button()
 
 
@@ -178,6 +201,7 @@ func _on_network_connected(peer_id: int) -> void:
 		return
 	if network_manager and network_manager.is_host():
 		_sync_host_shop_seed()
+	_update_scoreboard_names()
 	_open_shop_after_connect()
 
 
@@ -191,6 +215,7 @@ func _on_shop_seed_received(shop_seed: int) -> void:
 
 func _on_player_name_received(player_name: String) -> void:
 	_remote_player_name = player_name
+	_update_scoreboard_names()
 
 
 func _on_network_disconnected(_peer_id: int) -> void:
@@ -356,6 +381,32 @@ func _get_favored_team() -> int:
 
 func _get_favored_name(favored_team: int) -> String:
 	return _get_local_player_name() if favored_team == CardSlot.TEAM_PLAYER else _get_remote_player_name()
+
+
+func _update_scoreboard_names() -> void:
+	if scoreboard:
+		scoreboard.set_names(_get_local_player_name(), _get_remote_player_name())
+
+
+func _on_scoreboard_restart_requested() -> void:
+	reset_ready()
+	_set_phase(Phase.SHOP)
+	_lock_slots(false)
+	if shop_transition and not shop_transition.is_shop_active():
+		await shop_transition.set_shop_active(true)
+	await _set_inventory_locked(false)
+	InputModalLock.set_locked(get_tree(), false)
+	_update_ready_button()
+
+
+func _on_scoreboard_quit_requested() -> void:
+	InputModalLock.set_locked(get_tree(), false)
+	if network_manager:
+		network_manager.disconnect_peer()
+	reset_ready()
+	var network_menu: NetworkDebugMenu = get_tree().get_first_node_in_group("network_debug_menus") as NetworkDebugMenu
+	if network_menu:
+		network_menu.show()
 
 
 func _apply_result_coins(winner_team: int) -> void:

@@ -83,9 +83,11 @@ func _build_text(data: BoosterPackData) -> String:
 
 func _build_odds_text(data: BoosterPackData) -> String:
 	var odds: Array[String] = []
+	var pity_misses: int = _get_pity_misses(data)
+	var chances: Array[float] = data.get_effective_chances(pity_misses)
 	for rarity_index in range(CardData.Rarity.size()):
 		var rarity: int = rarity_index
-		var chance: float = data.get_rarity_chance(rarity)
+		var chance: float = chances[rarity]
 		if chance <= 0.0:
 			continue
 		odds.append("[color=#%s]%s:[/color] %s%%" % [
@@ -94,6 +96,13 @@ func _build_odds_text(data: BoosterPackData) -> String:
 			data.format_chance(chance),
 		])
 	return "  ".join(odds)
+
+
+func _get_pity_misses(data: BoosterPackData) -> int:
+	var shop_random: ShopRandom = get_tree().get_first_node_in_group("shop_random") as ShopRandom
+	if not shop_random:
+		return 0
+	return shop_random.get_booster_pity_misses(data)
 
 
 func _rarity_color(rarity: int) -> String:

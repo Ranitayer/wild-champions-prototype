@@ -67,6 +67,10 @@ func get_pack_key() -> String:
 	return title
 
 
+func get_effective_chances(pity_misses: int) -> Array[float]:
+	return _get_effective_chances(pity_misses)
+
+
 func _roll_rarity(random: RandomNumberGenerator, pity_misses := 0) -> CardData.Rarity:
 	var chances := _get_effective_chances(pity_misses)
 	var common: float = chances[CardData.Rarity.COMMON]
