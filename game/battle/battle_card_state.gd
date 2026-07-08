@@ -41,12 +41,13 @@ func get_effects() -> Array[Resource]:
 	return data.get_effects(tier)
 
 
-func acquire_trait(definition: CardTrait, amount := 1) -> void:
+func acquire_trait(definition: CardTrait, amount := 1) -> int:
 	for trait_state in traits:
 		if trait_state.definition.trait_id == definition.trait_id:
 			trait_state.add(amount)
-			return
+			return trait_state.value
 	traits.append(BattleTraitState.new(definition, amount))
+	return traits.back().value
 
 
 func modify_incoming_attack_damage(damage: int) -> int:
@@ -130,6 +131,13 @@ func uses_lowest_health_target() -> bool:
 		if trait_state.definition.uses_lowest_health_target(trait_state.value):
 			return true
 	return false
+
+
+func can_be_attacked_by(attacker_attack: int) -> bool:
+	for trait_state in traits:
+		if trait_state.definition.blocks_attacker_attack(attacker_attack, trait_state.value):
+			return false
+	return true
 
 
 func get_attack_overflow_damage(damage: int, target_health_before: int, target_survived: bool) -> int:

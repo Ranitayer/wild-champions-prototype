@@ -205,6 +205,7 @@ var _description_plain_text := ""
 var _trait_tooltip
 var _trait_tooltip_layer: CanvasLayer
 var _base_tooltip_sections: Array[Dictionary] = []
+var _runtime_trait_sections: Dictionary = {}
 var _extra_hover_controls: Array[Control] = []
 var _drag_guard: Callable
 var _card_tier := 1
@@ -681,10 +682,8 @@ func _make_editor_preview_signature() -> String:
 
 func _apply_description(data: CardData) -> void:
 	var trait_lines: Array[String] = []
-	for trait_resource in data.get_traits(_card_tier):
-		var trait_definition := trait_resource as CardTrait
-		if trait_definition:
-			trait_lines.append(trait_definition.get_display_text())
+	for section in _get_trait_sections(data):
+		trait_lines.append(str(section.get("title", "")))
 	var trait_text := " . ".join(trait_lines)
 	var tier_description := data.get_description(_card_tier)
 	_description_plain_text = trait_text
@@ -702,16 +701,47 @@ func _apply_description(data: CardData) -> void:
 func _configure_trait_tooltip() -> void:
 	if not card_data:
 		return
-	_base_tooltip_sections.clear()
-	for trait_resource in card_data.get_traits(_card_tier):
+	_base_tooltip_sections = _get_trait_sections(card_data)
+	_refresh_trait_tooltip()
+
+
+func _get_trait_sections(data: CardData) -> Array[Dictionary]:
+	var sections_by_id: Dictionary = {}
+	var order: Array[String] = []
+	for trait_resource in data.get_traits(_card_tier):
 		var trait_definition := trait_resource as CardTrait
 		if trait_definition:
-			_base_tooltip_sections.append({
+			var trait_id := str(trait_definition.trait_id)
+			if not sections_by_id.has(trait_id):
+				order.append(trait_id)
+			sections_by_id[trait_id] = {
 				"title": trait_definition.get_display_text(),
 				"description": trait_definition.get_tooltip_description(),
 				"color": TRAIT_COLOR,
-			})
-	_refresh_trait_tooltip()
+			}
+	for runtime_trait_key in _runtime_trait_sections:
+		var trait_id := str(runtime_trait_key)
+		if not sections_by_id.has(trait_id):
+			order.append(trait_id)
+		sections_by_id[trait_id] = _runtime_trait_sections[trait_id]
+	var sections: Array[Dictionary] = []
+	for trait_id in order:
+		sections.append(sections_by_id[trait_id])
+	return sections
+
+
+func set_runtime_trait(trait_id: String, title: String, description: String, color: Color = TRAIT_COLOR) -> void:
+	if trait_id.is_empty():
+		return
+	_runtime_trait_sections[trait_id] = {
+		"title": title,
+		"description": description,
+		"color": color,
+	}
+	var data := _get_display_data()
+	_apply_description(data)
+	_fit_description_text()
+	_configure_trait_tooltip()
 
 
 func _refresh_trait_tooltip() -> void:
@@ -961,6 +991,7 @@ func reset_combat_visuals() -> void:
 	clear_effect_outline()
 	_stop_tweens()
 	_suppress_stat_changes = true
+	_runtime_trait_sections.clear()
 	_hovered = false
 	_dragging = false
 	_snapping = false
@@ -977,6 +1008,10 @@ func reset_combat_visuals() -> void:
 	set_health_value(card_data.get_health(_card_tier) if card_data else 0)
 	set_cooldown_value(maxi(1, card_data.cooldown) if card_data else 1)
 	set_poison_value(0, false)
+	if card_data:
+		_apply_description(card_data)
+		_fit_description_text()
+		_configure_trait_tooltip()
 	_suppress_stat_changes = false
 
 

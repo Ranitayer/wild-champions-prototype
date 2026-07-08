@@ -4,11 +4,13 @@ extends Node
 signal connected(peer_id: int)
 signal disconnected(peer_id: int)
 signal connection_failed
-signal remote_ready(board_payload: Array, battle_seed: int)
+signal remote_ready(is_ready: bool, board_payload: Array, battle_seed: int)
 signal shop_seed_received(shop_seed: int)
 signal booster_rewards_received(request_id: int, reward_payload: Array)
 signal purchase_validated(request_id: int, valid: bool)
 signal player_name_received(player_name: String)
+signal remote_restart_requested
+signal remote_quit_requested
 
 const SERVER_PEER_ID := 1
 const MAX_CLIENTS := 1
@@ -59,11 +61,15 @@ func disconnect_peer() -> void:
 	multiplayer.multiplayer_peer = null
 
 
-func send_ready(board_payload: Array[BattleBoardCardSnapshot], battle_seed: int) -> bool:
+func reset_remote_shop_state() -> void:
+	_remote_pity_misses_by_pack.clear()
+
+
+func send_ready(board_payload: Array[BattleBoardCardSnapshot], battle_seed: int, is_ready: bool = true) -> bool:
 	var target_peer_id := _get_target_peer_id()
 	if target_peer_id == 0:
 		return false
-	_receive_ready.rpc_id(target_peer_id, BattleBoardSnapshot.to_rpc_payload(board_payload), battle_seed)
+	_receive_ready.rpc_id(target_peer_id, is_ready, BattleBoardSnapshot.to_rpc_payload(board_payload), battle_seed)
 	return true
 
 
@@ -105,6 +111,22 @@ func send_player_name() -> bool:
 	return true
 
 
+func send_match_restart() -> bool:
+	var target_peer_id := _get_target_peer_id()
+	if target_peer_id == 0:
+		return false
+	_receive_match_restart.rpc_id(target_peer_id)
+	return true
+
+
+func send_match_quit() -> bool:
+	var target_peer_id := _get_target_peer_id()
+	if target_peer_id == 0:
+		return false
+	_receive_match_quit.rpc_id(target_peer_id)
+	return true
+
+
 func is_connected_to_peer() -> bool:
 	return _get_target_peer_id() != 0
 
@@ -124,8 +146,11 @@ func _get_target_peer_id() -> int:
 
 
 @rpc("any_peer", "reliable")
-func _receive_ready(board_payload: Array, battle_seed: int) -> void:
-	remote_ready.emit(BattleBoardSnapshot.from_network_payload(board_payload).to_network_payload(), battle_seed)
+func _receive_ready(is_ready: bool, board_payload: Array, battle_seed: int) -> void:
+	var typed_payload: Array[BattleBoardCardSnapshot] = []
+	if is_ready:
+		typed_payload = BattleBoardSnapshot.from_network_payload(board_payload).to_network_payload()
+	remote_ready.emit(is_ready, typed_payload, battle_seed)
 
 
 @rpc("any_peer", "reliable")
@@ -151,12 +176,9 @@ func _receive_booster_reward_request(request_id: int, pack_data_path: String, re
 
 func _pick_remote_booster_rewards(pack_data: BoosterPackData, reward_count: int) -> Array[CardData]:
 	var pack_key := pack_data.get_pack_key()
-	var pity_misses := int(_remote_pity_misses_by_pack.get(pack_key, 0))
+	var pity_misses: Variant = _remote_pity_misses_by_pack.get(pack_key, {})
 	var rewards: Array[CardData] = pack_data.pick_rewards(reward_count, _remote_shop_random, pity_misses)
-	if pack_data.has_high_rarity(rewards):
-		_remote_pity_misses_by_pack[pack_key] = 0
-	else:
-		_remote_pity_misses_by_pack[pack_key] = pity_misses + 1
+	_remote_pity_misses_by_pack[pack_key] = pack_data.get_updated_pity_misses(pity_misses, rewards)
 	return rewards
 
 
@@ -184,6 +206,16 @@ func _receive_player_name(player_name: String) -> void:
 	if remote_player_name.is_empty():
 		remote_player_name = "Enemy"
 	player_name_received.emit(remote_player_name)
+
+
+@rpc("any_peer", "reliable")
+func _receive_match_restart() -> void:
+	remote_restart_requested.emit()
+
+
+@rpc("any_peer", "reliable")
+func _receive_match_quit() -> void:
+	remote_quit_requested.emit()
 
 
 func _on_peer_connected(peer_id: int) -> void:

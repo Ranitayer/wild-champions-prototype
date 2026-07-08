@@ -44,6 +44,11 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
+func show_with_status(text: String) -> void:
+	show()
+	_set_status(text)
+
+
 func _build_ui() -> void:
 	_root = Control.new()
 	_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -132,14 +137,7 @@ func _make_button(text: String) -> Button:
 	var button := Button.new()
 	button.text = text
 	button.custom_minimum_size = Vector2(menu_width, button_height)
-	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	button.focus_mode = Control.FOCUS_NONE
-	button.add_theme_font_override("font", CARD_FONT)
-	button.add_theme_font_size_override("font_size", 24)
-	for state in ["font_color", "font_hover_color", "font_pressed_color"]:
-		button.add_theme_color_override(state, DARK_COLOR)
-	for state in ["normal", "hover", "pressed"]:
-		button.add_theme_stylebox_override(state, _make_box_style(LIGHT_COLOR))
+	UIButtonStyle.apply_plain_button(button, 24, LIGHT_COLOR, DARK_COLOR)
 	button.resized.connect(_center_button_pivot.bind(button))
 	button.mouse_entered.connect(_animate_button.bind(button, true))
 	button.mouse_exited.connect(_animate_button.bind(button, false))
@@ -158,20 +156,11 @@ func _make_box_style(color: Color) -> StyleBoxFlat:
 
 
 func _center_button_pivot(button: Button) -> void:
-	button.pivot_offset = button.size * 0.5
+	UIButtonStyle.center_pivot(button)
 
 
 func _animate_button(button: Button, hovered: bool) -> void:
-	var key := button.get_instance_id()
-	var old_tween: Tween = _button_tweens.get(key) as Tween
-	if old_tween != null and old_tween.is_valid():
-		old_tween.kill()
-	var target_scale := Vector2.ONE * (hover_scale if hovered else 1.0)
-	var tween := create_tween()
-	tween.set_trans(Tween.TRANS_BACK)
-	tween.set_ease(Tween.EASE_OUT)
-	tween.tween_property(button, "scale", target_scale, hover_duration)
-	_button_tweens[key] = tween
+	UIButtonStyle.animate_hover(self, button, hovered, _button_tweens, hover_scale, hover_duration)
 
 
 func _on_host_pressed() -> void:
@@ -217,13 +206,11 @@ func _on_network_connected(peer_id: int) -> void:
 
 
 func _on_network_disconnected(_peer_id: int) -> void:
-	show()
-	_set_status("Other player disconnected.")
+	show_with_status("Other player disconnected.")
 
 
 func _on_connection_failed() -> void:
-	show()
-	_set_status("Connection failed.")
+	show_with_status("Connection failed.")
 
 
 func _set_status(text: String) -> void:

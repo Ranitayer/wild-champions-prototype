@@ -1,0 +1,40 @@
+[gd_resource type="Resource" script_class="CardData" format=3 uid="uid://gy86st0vsstk"]
+
+[ext_resource type="Script" uid="uid://dsht6jxxa5f8m" path="res://game/cards/card_data.gd" id="1_data"]
+[ext_resource type="Texture2D" uid="uid://bavln83iapmja" path="res://assets/art/cards/scar.png" id="2_art"]
+[ext_resource type="Script" uid="uid://ba50mbukrgl8w" path="res://game/cards/traits/tough_trait.gd" id="3_tough"]
+[ext_resource type="Script" uid="uid://ba0ttub5vuikd" path="res://game/cards/effects/adjacent_trait_buff_effect.gd" id="4_effect"]
+[ext_resource type="Script" uid="uid://buc18u4ppgb8o" path="res://game/cards/card_tier_override.gd" id="5_tier"]
+
+[sub_resource type="Resource" id="Tough_scar"]
+script = ExtResource("3_tough")
+
+[sub_resource type="Resource" id="AdjacentTough_scar"]
+script = ExtResource("4_effect")
+trait_resource = SubResource("Tough_scar")
+
+[sub_resource type="Resource" id="Tier2_scar"]
+script = ExtResource("5_tier")
+attack = 1
+health = 6
+
+[sub_resource type="Resource" id="Tier3_scar"]
+script = ExtResource("5_tier")
+tier = 3
+attack = 2
+health = 8
+
+[resource]
+script = ExtResource("1_data")
+title = "SCAR"
+description = "Start of combat: Adjacent allies get +1 Tough."
+art = ExtResource("2_art")
+art_scale = 1.1
+art_offset = Vector2(0, 2)
+tags = Array[StringName]([&"spider"])
+attack = 1
+health = 4
+cooldown = 3
+effects = Array[Resource]([SubResource("AdjacentTough_scar")])
+traits = Array[Resource]([SubResource("Tough_scar")])
+tier_overrides = Array[Resource]([SubResource("Tier2_scar"), SubResource("Tier3_scar")])

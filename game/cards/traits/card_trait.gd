@@ -45,6 +45,10 @@ func uses_lowest_health_target(_trait_value: int) -> bool:
 	return false
 
 
+func blocks_attacker_attack(_attacker_attack: int, _trait_value: int) -> bool:
+	return false
+
+
 func get_attack_overflow_damage(
 	_damage: int,
 	_target_health_before: int,

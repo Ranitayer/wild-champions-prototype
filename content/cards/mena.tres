@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="CardData" format=3 uid="uid://dbysd3h3iouxf"]
+
+[ext_resource type="Script" uid="uid://dsht6jxxa5f8m" path="res://game/cards/card_data.gd" id="1_data"]
+[ext_resource type="Texture2D" uid="uid://xkjejjcdhseq" path="res://assets/art/cards/mena.png" id="2_art"]
+[ext_resource type="Script" uid="uid://duf7eklawrsyk" path="res://game/cards/effects/after_kill_attack_health_buff_effect.gd" id="3_effect"]
+[ext_resource type="Script" uid="uid://dhf0buqjajao1" path="res://game/cards/traits/predator_trait.gd" id="4_predator"]
+[ext_resource type="Script" uid="uid://buc18u4ppgb8o" path="res://game/cards/card_tier_override.gd" id="5_tier"]
+
+[sub_resource type="Resource" id="KillBuff_mena"]
+script = ExtResource("3_effect")
+
+[sub_resource type="Resource" id="Tier2_mena"]
+script = ExtResource("5_tier")
+attack = 6
+health = 6
+
+[sub_resource type="Resource" id="Predator_mena"]
+script = ExtResource("4_predator")
+
+[resource]
+script = ExtResource("1_data")
+title = "MENA"
+description = "After killing an enemy, gain +2 Attack and +2 Health."
+art = ExtResource("2_art")
+art_scale = 1.3
+art_offset = Vector2(7, 0)
+rarity = 3
+tags = Array[StringName]([&"animal"])
+attack = 4
+health = 4
+cooldown = 2
+effects = Array[Resource]([SubResource("KillBuff_mena")])
+traits = Array[Resource]([SubResource("Predator_mena")])
+tier_overrides = Array[Resource]([SubResource("Tier2_mena")])

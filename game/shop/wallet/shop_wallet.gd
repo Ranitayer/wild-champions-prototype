@@ -64,6 +64,18 @@ func add_coins(amount: int) -> void:
 	money_stat.value = balance
 
 
+func reset_wallet() -> void:
+	if _flash_tween and _flash_tween.is_valid():
+		_flash_tween.kill()
+	if _shake_tween and _shake_tween.is_valid():
+		_shake_tween.kill()
+	_finish_shake_target()
+	_spending = false
+	balance = starting_money
+	money_stat.value = balance
+	_set_money_style(MONEY_COLOR, LIGHT_COLOR)
+
+
 func is_busy() -> bool:
 	return _spending or _is_failure_animating()
 

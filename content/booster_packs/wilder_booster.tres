@@ -1,7 +1,7 @@
-[gd_resource type="Resource" script_class="BoosterPackData" format=3]
+[gd_resource type="Resource" script_class="BoosterPackData" format=3 uid="uid://cc84h6lmy20v7"]
 
-[ext_resource type="Script" path="res://game/shop/booster_pack/booster_pack_data.gd" id="1_pack_data"]
-[ext_resource type="Resource" path="res://content/cards/all_cards.tres" id="2_catalog"]
+[ext_resource type="Script" uid="uid://2xpwpf21yv4j" path="res://game/shop/booster_pack/booster_pack_data.gd" id="1_pack_data"]
+[ext_resource type="Resource" uid="uid://bkvndfyes17j8" path="res://content/cards/all_cards.tres" id="2_catalog"]
 
 [resource]
 script = ExtResource("1_pack_data")
@@ -17,6 +17,7 @@ uncommon_chance = 75.0
 rare_chance = 20.0
 epic_chance = 4.5
 mythic_chance = 0.5
+mythic_pity_per_miss = 0.05
 rare_pity_max = 30.0
 epic_pity_max = 8.0
-mythic_pity_max = 1.5
+mythic_pity_max = 1.2

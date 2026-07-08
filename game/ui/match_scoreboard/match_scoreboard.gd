@@ -28,9 +28,7 @@ const CARD_FONT: FontFile = preload("res://assets/fonts/cardfont.ttf")
 @export_range(0.0, 40.0, 1.0) var match_buttons_margin: float = 12.0
 @export_range(0.0, 60.0, 1.0) var match_buttons_gap: float = 20.0
 
-var local_score: int = 0
-var enemy_score: int = 0
-var round_number: int = 1
+var score_state: MatchScoreState = MatchScoreState.new()
 
 var _base_box_width: float
 var _local_box: Panel
@@ -59,6 +57,7 @@ var _button_tweens: Dictionary = {}
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_base_box_width = box_width
+	score_state.configure(max_rounds, wins_to_match)
 	_build_ui()
 	_build_match_over_ui()
 	set_names(_pending_local_name, _pending_enemy_name)
@@ -83,7 +82,7 @@ func set_names(local_name: String, enemy_name: String) -> void:
 
 func get_next_marker_position(team: int) -> Vector2:
 	var dots: Array[Panel] = _get_dots(team)
-	var index: int = local_score if team == CardSlot.TEAM_PLAYER else enemy_score
+	var index: int = score_state.get_next_marker_index(team)
 	if index < 0 or index >= dots.size():
 		return global_position + size * 0.5
 	var dot: Panel = dots[index]
@@ -91,12 +90,9 @@ func get_next_marker_position(team: int) -> Vector2:
 
 
 func add_win(team: int, animate: bool = false) -> void:
-	var won_index: int = local_score if team == CardSlot.TEAM_PLAYER else enemy_score
-	if team == CardSlot.TEAM_PLAYER:
-		local_score = mini(local_score + 1, wins_to_match)
-	elif team == CardSlot.TEAM_ENEMY:
-		enemy_score = mini(enemy_score + 1, wins_to_match)
-	round_number += 1
+	var won_index: int = score_state.add_win(team)
+	if won_index < 0:
+		return
 	_refresh()
 	if animate:
 		_pop_dot(team, won_index)
@@ -109,20 +105,15 @@ func add_win(team: int, animate: bool = false) -> void:
 
 
 func is_match_over() -> bool:
-	if local_score >= wins_to_match or enemy_score >= wins_to_match:
-		return true
-	if round_number > max_rounds and local_score != enemy_score:
-		return true
-	return false
+	return score_state.is_match_over()
 
 
 func reset_match() -> void:
 	InputModalLock.set_locked(get_tree(), false)
-	local_score = 0
-	enemy_score = 0
-	round_number = 1
+	score_state.reset()
 	_match_over = false
 	_match_over_pending = false
+	set_restart_waiting(false)
 	_match_root.hide()
 	_local_name.show()
 	_enemy_name.show()
@@ -261,8 +252,8 @@ func _play_appear() -> void:
 
 
 func _refresh() -> void:
-	_refresh_dots(_local_dots, local_score, PLAYER_COLOR)
-	_refresh_dots(_enemy_dots, enemy_score, ENEMY_COLOR)
+	_refresh_dots(_local_dots, score_state.local_score, PLAYER_COLOR)
+	_refresh_dots(_enemy_dots, score_state.enemy_score, ENEMY_COLOR)
 
 
 func _refresh_dots(dots: Array[Panel], score: int, color: Color) -> void:
@@ -300,7 +291,7 @@ func _build_match_over_ui() -> void:
 	_match_layer.add_child(_match_root)
 
 	_winner_name_box = Panel.new()
-	_winner_name_box.add_theme_stylebox_override("panel", _button_style(LIGHT_COLOR))
+	_winner_name_box.add_theme_stylebox_override("panel", UIButtonStyle.make_box_style(LIGHT_COLOR))
 	_match_root.add_child(_winner_name_box)
 
 	_winner_name_label = Label.new()
@@ -325,14 +316,7 @@ func _make_button(text: String) -> Button:
 	button.text = text
 	button.size = Vector2(160.0, 54.0)
 	button.pivot_offset = button.size * 0.5
-	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	button.focus_mode = Control.FOCUS_NONE
-	button.add_theme_font_override("font", CARD_FONT)
-	button.add_theme_font_size_override("font_size", 24)
-	for state in ["font_color", "font_hover_color", "font_pressed_color"]:
-		button.add_theme_color_override(state, DARK_COLOR)
-	for state in ["normal", "hover", "pressed"]:
-		button.add_theme_stylebox_override(state, _button_style(LIGHT_COLOR))
+	UIButtonStyle.apply_plain_button(button, 24, LIGHT_COLOR, DARK_COLOR)
 	button.resized.connect(_center_button_pivot.bind(button))
 	button.mouse_entered.connect(_animate_button.bind(button, true))
 	button.mouse_exited.connect(_animate_button.bind(button, false))
@@ -380,7 +364,7 @@ func _show_match_winner(team: int) -> void:
 	_match_root.show()
 	_match_root.modulate.a = 1.0
 	var viewport_size: Vector2 = get_viewport_rect().size
-	var score: int = local_score if team == CardSlot.TEAM_PLAYER else enemy_score
+	var score: int = score_state.get_score(team)
 	var winner_color: Color = PLAYER_COLOR if team == CardSlot.TEAM_PLAYER else ENEMY_COLOR
 	var winner_text: String = "%s won!" % (_pending_local_name if team == CardSlot.TEAM_PLAYER else _pending_enemy_name)
 	var dots_width: float = dot_size * wins_to_match + _dot_gap * maxi(0, wins_to_match - 1)
@@ -419,27 +403,12 @@ func _position_match_buttons(panel_position: Vector2, panel_size: Vector2) -> vo
 	_quit_button.position = Vector2(start_x + _restart_button.size.x + match_buttons_gap, y_position)
 
 
-func _button_style(color: Color) -> StyleBoxFlat:
-	var style: StyleBoxFlat = StyleBoxFlat.new()
-	style.bg_color = color
-	style.set_corner_radius_all(6)
-	return style
-
-
 func _center_button_pivot(button: Button) -> void:
-	button.pivot_offset = button.size * 0.5
+	UIButtonStyle.center_pivot(button)
 
 
 func _animate_button(button: Button, hovered: bool) -> void:
-	var key: int = button.get_instance_id()
-	var old_tween: Tween = _button_tweens.get(key) as Tween
-	if old_tween and old_tween.is_valid():
-		old_tween.kill()
-	var target_scale: Vector2 = Vector2.ONE * (1.06 if hovered else 1.0)
-	var tween: Tween = create_tween()
-	tween.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.tween_property(button, "scale", target_scale, 0.12)
-	_button_tweens[key] = tween
+	UIButtonStyle.animate_hover(self, button, hovered, _button_tweens)
 
 
 func _fit_winner_label_font(text: String, max_width: float) -> void:
@@ -450,12 +419,21 @@ func _fit_winner_label_font(text: String, max_width: float) -> void:
 
 
 func _on_restart_pressed() -> void:
-	reset_match()
 	restart_requested.emit()
 
 
+func set_restart_waiting(waiting: bool) -> void:
+	if not _restart_button:
+		return
+	_restart_button.text = "WAIT" if waiting else "RESTART"
+	UIButtonStyle.set_button_colors(
+		_restart_button,
+		DARK_COLOR if waiting else LIGHT_COLOR,
+		LIGHT_COLOR if waiting else DARK_COLOR
+	)
+
+
 func _on_quit_pressed() -> void:
-	InputModalLock.set_locked(get_tree(), false)
 	quit_requested.emit()
 
 

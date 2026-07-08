@@ -13,7 +13,6 @@ enum Phase {
 
 const LIGHT_COLOR := Color("ebede9")
 const DARK_COLOR := Color("151d28")
-const CARD_FONT := preload("res://assets/fonts/cardfont.ttf")
 
 @export var shop_transition_path: NodePath = ^"../ShopTransition"
 @export var combat_path: NodePath = ^"../Combat"
@@ -40,8 +39,9 @@ var remote_board_payload: Array[BattleBoardCardSnapshot] = []
 var _battle_seed := 0
 var _winner_team := -1
 var _remote_player_name := "Enemy"
-var _button_style: StyleBoxFlat
 var _button_tween: Tween
+var _local_restart_requested := false
+var _remote_restart_requested := false
 
 @onready var shop_transition: ShopTransition = get_node(shop_transition_path) as ShopTransition
 @onready var combat: BattleCombat = get_node(combat_path) as BattleCombat
@@ -72,6 +72,8 @@ func _ready() -> void:
 		network_manager.shop_seed_received.connect(_on_shop_seed_received)
 		network_manager.player_name_received.connect(_on_player_name_received)
 		network_manager.disconnected.connect(_on_network_disconnected)
+		network_manager.remote_restart_requested.connect(_on_network_restart_requested)
+		network_manager.remote_quit_requested.connect(_on_network_quit_requested)
 	_update_scoreboard_names()
 
 
@@ -81,11 +83,15 @@ func get_local_board_payload() -> Array[BattleBoardCardSnapshot]:
 
 func set_remote_ready(is_ready: bool, board_payload: Array = [], battle_seed: int = 0) -> void:
 	remote_ready = is_ready
-	remote_board_payload = _typed_payload(board_payload)
-	if battle_seed > 0:
+	if is_ready:
+		remote_board_payload = _typed_payload(board_payload)
+	else:
+		remote_board_payload.clear()
+	if is_ready and battle_seed > 0:
 		_battle_seed = battle_seed
 	_update_ready_button()
-	_try_start_match()
+	if is_ready:
+		_try_start_match()
 
 
 func reset_ready() -> void:
@@ -104,6 +110,7 @@ func _on_ready_pressed() -> void:
 	if phase != Phase.SHOP or not shop_transition.is_shop_active():
 		return
 	if local_ready:
+		_cancel_local_ready()
 		return
 	_update_scoreboard_names()
 	local_ready = true
@@ -120,6 +127,22 @@ func _on_ready_pressed() -> void:
 	_lock_slots(local_ready)
 	_update_ready_button()
 	_try_start_match()
+
+
+func _cancel_local_ready() -> void:
+	local_ready = false
+	local_board_payload.clear()
+	if not remote_ready:
+		_battle_seed = 0
+	if _has_network_peer():
+		var empty_payload: Array[BattleBoardCardSnapshot] = []
+		network_manager.send_ready(empty_payload, 0, false)
+	elif solo_test_auto_ready:
+		remote_ready = false
+		remote_board_payload.clear()
+		_battle_seed = 0
+	_lock_slots(false)
+	_update_ready_button()
 
 
 func _try_start_match() -> void:
@@ -157,14 +180,14 @@ func _on_combat_finished() -> void:
 	reset_ready()
 	InputModalLock.set_locked(get_tree(), true)
 	if result_popup and winner_team >= 0:
+		var match_result: MatchResult = _build_match_result(winner_team)
 		var has_score_target: bool = scoreboard != null
 		var target_position: Vector2 = scoreboard.get_next_marker_position(winner_team) if has_score_target else Vector2.ZERO
 		var arrived_callback: Callable = Callable()
 		if scoreboard:
 			arrived_callback = scoreboard.add_win.bind(winner_team, true)
-		await result_popup.show_winner(
-			_get_winner_name(winner_team),
-			winner_team == CardSlot.TEAM_PLAYER,
+		await result_popup.show_result(
+			match_result,
 			target_position,
 			has_score_target,
 			arrived_callback
@@ -205,8 +228,8 @@ func _on_network_connected(peer_id: int) -> void:
 	_open_shop_after_connect()
 
 
-func _on_network_remote_ready(board_payload: Array, battle_seed: int) -> void:
-	set_remote_ready(true, board_payload, battle_seed)
+func _on_network_remote_ready(is_ready: bool, board_payload: Array, battle_seed: int) -> void:
+	set_remote_ready(is_ready, board_payload, battle_seed)
 
 
 func _on_shop_seed_received(shop_seed: int) -> void:
@@ -220,8 +243,9 @@ func _on_player_name_received(player_name: String) -> void:
 
 func _on_network_disconnected(_peer_id: int) -> void:
 	var restore_payload: Array[BattleBoardCardSnapshot] = _typed_payload(local_board_payload)
+	InputModalLock.set_locked(get_tree(), false)
 	if booster_rewards:
-		await booster_rewards.force_close()
+		await booster_rewards.force_close(false)
 	if combat:
 		combat.force_stop()
 	var arena: BattleArena = get_parent() as BattleArena
@@ -230,11 +254,14 @@ func _on_network_disconnected(_peer_id: int) -> void:
 		if not restore_payload.is_empty():
 			arena.restore_player_board(restore_payload)
 	_set_phase(Phase.SHOP)
+	if scoreboard:
+		scoreboard.reset_match()
 	reset_ready()
 	_lock_slots(false)
 	await _set_inventory_locked(false)
 	if shop_transition and not shop_transition.is_shop_active():
 		await shop_transition.set_shop_active(true)
+	_update_ready_button()
 
 
 func _on_combat_won(winner_team: int) -> void:
@@ -252,15 +279,7 @@ func _configure_ready_button() -> void:
 	ready_button.hide()
 	ready_button.text = "READY"
 	ready_button.pivot_offset = ready_button.size * 0.5
-	ready_button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	ready_button.add_theme_font_override("font", CARD_FONT)
-	ready_button.add_theme_font_size_override("font_size", 24)
-	_button_style = StyleBoxFlat.new()
-	_button_style.bg_color = LIGHT_COLOR
-	_button_style.set_corner_radius_all(6)
-	for state in ["normal", "hover", "pressed"]:
-		ready_button.add_theme_stylebox_override(state, _button_style)
-	ready_button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	UIButtonStyle.apply_plain_button(ready_button, 24, LIGHT_COLOR, DARK_COLOR)
 	ready_button.mouse_entered.connect(_animate_button_hover.bind(true))
 	ready_button.mouse_exited.connect(_animate_button_hover.bind(false))
 
@@ -283,11 +302,9 @@ func _update_ready_button() -> void:
 	var rewards_active: bool = booster_rewards != null and booster_rewards.is_active()
 	ready_button.visible = phase == Phase.SHOP and shop_active and not rewards_active
 	ready_button.disabled = phase != Phase.SHOP or not shop_active or rewards_active
-	ready_button.text = "WAIT" if local_ready else "READY"
-	_button_style.bg_color = DARK_COLOR if local_ready else LIGHT_COLOR
+	ready_button.text = "CANCEL" if local_ready else "READY"
 	var text_color: Color = LIGHT_COLOR if local_ready else DARK_COLOR
-	for state in ["font_color", "font_hover_color", "font_pressed_color"]:
-		ready_button.add_theme_color_override(state, text_color)
+	UIButtonStyle.set_button_colors(ready_button, DARK_COLOR if local_ready else LIGHT_COLOR, text_color)
 
 
 func _set_inventory_locked(locked: bool) -> void:
@@ -360,6 +377,14 @@ func _get_winner_name(winner_team: int) -> String:
 	return _get_remote_player_name()
 
 
+func _build_match_result(winner_team: int) -> MatchResult:
+	return MatchResult.new(
+		winner_team,
+		_get_winner_name(winner_team),
+		winner_team == CardSlot.TEAM_PLAYER
+	)
+
+
 func _get_local_player_name() -> String:
 	return network_manager.local_player_name if network_manager else "Player"
 
@@ -389,24 +414,102 @@ func _update_scoreboard_names() -> void:
 
 
 func _on_scoreboard_restart_requested() -> void:
-	reset_ready()
-	_set_phase(Phase.SHOP)
-	_lock_slots(false)
-	if shop_transition and not shop_transition.is_shop_active():
-		await shop_transition.set_shop_active(true)
-	await _set_inventory_locked(false)
-	InputModalLock.set_locked(get_tree(), false)
-	_update_ready_button()
+	if _local_restart_requested:
+		return
+	_local_restart_requested = true
+	if scoreboard:
+		scoreboard.set_restart_waiting(true)
+	if _has_network_peer():
+		network_manager.send_match_restart()
+	else:
+		_remote_restart_requested = true
+	await _try_restart_finished_match()
+
+
+func _on_network_restart_requested() -> void:
+	_remote_restart_requested = true
+	await _try_restart_finished_match()
+
+
+func _try_restart_finished_match() -> void:
+	if _has_network_peer() and not (_local_restart_requested and _remote_restart_requested):
+		return
+	await _restart_finished_match()
+
+
+func _restart_finished_match() -> void:
+	await _reset_full_game(true)
 
 
 func _on_scoreboard_quit_requested() -> void:
-	InputModalLock.set_locked(get_tree(), false)
+	if _has_network_peer():
+		network_manager.send_match_quit()
+		await get_tree().process_frame
+	await _quit_to_network_menu("Match closed.")
+
+
+func _on_network_quit_requested() -> void:
+	await _quit_to_network_menu("Other player quit.")
+
+
+func _quit_to_network_menu(status_text: String) -> void:
+	await _reset_full_game(false)
+	_reset_restart_requests()
 	if network_manager:
 		network_manager.disconnect_peer()
-	reset_ready()
 	var network_menu: NetworkDebugMenu = get_tree().get_first_node_in_group("network_debug_menus") as NetworkDebugMenu
 	if network_menu:
-		network_menu.show()
+		network_menu.show_with_status(status_text)
+	_update_ready_button()
+
+
+func _reset_full_game(open_shop: bool) -> void:
+	_reset_restart_requests()
+	InputModalLock.set_locked(get_tree(), false)
+	if booster_rewards:
+		await booster_rewards.force_close(false)
+	if combat:
+		combat.force_stop()
+	var arena: BattleArena = get_parent() as BattleArena
+	if arena:
+		arena.reset_board()
+	if scoreboard:
+		scoreboard.reset_match()
+	var collection: CardCollection = get_tree().get_first_node_in_group("card_collections") as CardCollection
+	if collection:
+		collection.reset_collection()
+	var wallet: ShopWallet = get_tree().get_first_node_in_group("shop_wallets") as ShopWallet
+	if wallet:
+		wallet.reset_wallet()
+	if shop_random:
+		shop_random.reset_pity()
+	if network_manager and network_manager.is_host():
+		network_manager.reset_remote_shop_state()
+	reset_ready()
+	_set_phase(Phase.SHOP)
+	_lock_slots(false)
+	await _set_inventory_locked(false)
+	if not open_shop and shop_transition and shop_transition.is_shop_active():
+		await shop_transition.set_shop_active(false)
+	if open_shop and shop_transition:
+		if shop_transition.is_shop_active():
+			await shop_transition.refresh_shop_products()
+		else:
+			await shop_transition.set_shop_active(true)
+	if open_shop:
+		if _has_network_peer():
+			if network_manager.is_host():
+				_sync_host_shop_seed()
+		else:
+			_apply_shop_seed(_make_seed())
+	_update_ready_button()
+
+
+func _reset_restart_requests() -> void:
+	_local_restart_requested = false
+	_remote_restart_requested = false
+	if scoreboard:
+		scoreboard.set_restart_waiting(false)
 
 
 func _apply_result_coins(winner_team: int) -> void:

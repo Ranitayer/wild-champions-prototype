@@ -101,12 +101,7 @@ func show_remote_board(payload: Array) -> void:
 
 
 func restore_player_board(payload: Array) -> void:
-	for slot in get_player_slots():
-		var card: CardVisual = slot.get_card()
-		if card:
-			slot.release(card)
-			card.hide()
-			card.queue_free()
+	clear_player_board()
 	for value in payload:
 		var entry := BattleBoardSnapshot._payload_entry(value)
 		if not entry:
@@ -127,6 +122,20 @@ func clear_remote_board() -> void:
 		if is_instance_valid(card):
 			card.queue_free()
 	_remote_cards.clear()
+
+
+func clear_player_board() -> void:
+	for slot in get_player_slots():
+		var card: CardVisual = slot.get_card()
+		if card:
+			slot.release(card)
+			card.hide()
+			card.queue_free()
+
+
+func reset_board() -> void:
+	clear_remote_board()
+	clear_player_board()
 
 
 func _find_slot(team: int, slot_index: int) -> CardSlot:

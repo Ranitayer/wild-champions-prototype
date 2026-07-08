@@ -1,11 +1,11 @@
 [gd_scene format=3 uid="uid://c5rgc7knp5jb8"]
 
 [ext_resource type="Script" uid="uid://c4as2gk18787x" path="res://game/cards/card_visual.gd" id="1_visual"]
-[ext_resource type="Resource" uid="uid://bhruh3wa1qujl" path="res://content/cards/creg.tres" id="2_r0hn4"]
+[ext_resource type="Resource" path="res://content/cards/kali.tres" id="2_r0hn4"]
 [ext_resource type="PackedScene" path="res://game/cards/stat_circle.tscn" id="2_stat"]
 [ext_resource type="FontFile" uid="uid://g1ho36qv3g0r" path="res://assets/fonts/cardfont.ttf" id="3_font"]
 [ext_resource type="Shader" uid="uid://cvf421j5fgtfo" path="res://game/cards/shaders/card_hit_flash.gdshader" id="4_hit_flash"]
-[ext_resource type="Texture2D" uid="uid://c6xsm4moko2gw" path="res://assets/art/cards/creg.png" id="5_ocqnd"]
+[ext_resource type="Texture2D" uid="uid://c4unh43egc262" path="res://assets/art/cards/kali.png" id="5_ocqnd"]
 [ext_resource type="Script" uid="uid://dqipmhmchkyr7" path="res://game/cards/card_tier_indicator.gd" id="5_tier"]
 [ext_resource type="Script" uid="uid://1om5wqmq6lhe" path="res://game/cards/card_merge_animator.gd" id="6_merge"]
 
@@ -28,17 +28,17 @@ corner_radius_top_right = 9
 corner_radius_bottom_right = 9
 corner_radius_bottom_left = 9
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_r0hn4"]
-bg_color = Color(0.65882355, 0.70980394, 0.69803923, 1)
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_jubq1"]
+bg_color = Color(0.8745098, 0.5176471, 0.64705884, 1)
 corner_radius_top_left = 5
 corner_radius_top_right = 5
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ocqnd"]
-bg_color = Color(0.22352941, 0.2901961, 0.3137255, 1)
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_7cxrc"]
+bg_color = Color(0.2509804, 0.15294118, 0.31764707, 1)
 corner_radius_bottom_right = 5
 corner_radius_bottom_left = 5
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_jubq1"]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_16kbm"]
 bg_color = Color(0.921569, 0.929412, 0.913725, 1)
 border_width_left = 4
 border_width_top = 4
@@ -95,7 +95,7 @@ offset_top = 4.0
 offset_right = 196.0
 offset_bottom = 147.5
 mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_r0hn4")
+theme_override_styles/panel = SubResource("StyleBoxFlat_jubq1")
 
 [node name="RarityBottom" type="Panel" parent="VisualGroup/CardSurface" unique_id=2074707878]
 unique_name_in_owner = true
@@ -105,17 +105,17 @@ offset_top = 147.5
 offset_right = 196.0
 offset_bottom = 271.0
 mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_ocqnd")
+theme_override_styles/panel = SubResource("StyleBoxFlat_7cxrc")
 
 [node name="ArtTexture" type="TextureRect" parent="VisualGroup/CardSurface" unique_id=1672575452]
 unique_name_in_owner = true
 texture_filter = 4
 layout_mode = 0
-offset_left = 8.0
-offset_top = 13.0
-offset_right = 192.0
-offset_bottom = 119.5
-scale = Vector2(1.6, 1.6)
+offset_left = 13.0
+offset_top = 10.0
+offset_right = 197.0
+offset_bottom = 116.5
+scale = Vector2(1.3, 1.3)
 pivot_offset = Vector2(92, 53.25)
 mouse_filter = 2
 texture = ExtResource("5_ocqnd")
@@ -128,7 +128,7 @@ anchors_preset = 0
 offset_left = 176.0
 offset_top = 12.0
 offset_right = 188.0
-offset_bottom = 64.0
+offset_bottom = 44.0
 mouse_filter = 2
 script = ExtResource("5_tier")
 right_margin = 12.0
@@ -141,7 +141,7 @@ offset_left = -3.5
 offset_top = 122.5
 offset_right = 203.5
 offset_bottom = 172.5
-theme_override_styles/panel = SubResource("StyleBoxFlat_jubq1")
+theme_override_styles/panel = SubResource("StyleBoxFlat_16kbm")
 
 [node name="TitleLabel" type="Label" parent="VisualGroup/CardSurface/TitleBox" unique_id=847498797]
 unique_name_in_owner = true
@@ -152,7 +152,7 @@ offset_bottom = 50.0
 theme_override_colors/font_color = Color(0.0823529, 0.113725, 0.156863, 1)
 theme_override_fonts/font = ExtResource("3_font")
 theme_override_font_sizes/font_size = 20
-text = "CREG"
+text = "KALI"
 horizontal_alignment = 1
 vertical_alignment = 1
 text_overrun_behavior = 3
@@ -167,9 +167,9 @@ offset_bottom = 231.0
 mouse_filter = 2
 theme_override_colors/default_color = Color(0.921569, 0.929412, 0.913725, 1)
 theme_override_fonts/normal_font = ExtResource("3_font")
-theme_override_font_sizes/normal_font_size = 17
+theme_override_font_sizes/normal_font_size = 18
 bbcode_enabled = true
-text = "[center]On death: Adjacent allies get +1 Health.[/center]"
+text = "[center][color=#de9e41]Fear[/color][/center]"
 scroll_active = false
 vertical_alignment = 1
 

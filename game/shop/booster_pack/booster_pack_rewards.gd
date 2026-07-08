@@ -45,7 +45,7 @@ func is_active() -> bool:
 	return _active
 
 
-func force_close() -> void:
+func force_close(reopen_products: bool = true) -> void:
 	_clear_rewards()
 	if _dim_overlay:
 		_dim_overlay.hide()
@@ -53,7 +53,8 @@ func force_close() -> void:
 	_active_pack = null
 	_set_active(false)
 	await _set_collection_locked(false)
-	_reopen_products()
+	if reopen_products:
+		_reopen_products()
 
 
 func _process(_delta: float) -> void:

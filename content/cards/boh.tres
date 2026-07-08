@@ -1,0 +1,40 @@
+[gd_resource type="Resource" script_class="CardData" format=3 uid="uid://cftmn4nlaxp1y"]
+
+[ext_resource type="Script" uid="uid://dsht6jxxa5f8m" path="res://game/cards/card_data.gd" id="1_data"]
+[ext_resource type="Texture2D" uid="uid://c5fqshsqlftmv" path="res://assets/art/cards/boh.png" id="2_art"]
+[ext_resource type="Script" path="res://game/cards/effects/death_random_enemy_damage_effect.gd" id="3_effect"]
+[ext_resource type="Script" uid="uid://buc18u4ppgb8o" path="res://game/cards/card_tier_override.gd" id="4_tier"]
+
+[sub_resource type="Resource" id="DeathRandom1_boh"]
+script = ExtResource("3_effect")
+
+[sub_resource type="Resource" id="Tier2_boh"]
+script = ExtResource("4_tier")
+attack = 1
+health = 2
+
+[sub_resource type="Resource" id="DeathRandom2_boh"]
+script = ExtResource("3_effect")
+damage = 2
+
+[sub_resource type="Resource" id="Tier3_boh"]
+script = ExtResource("4_tier")
+tier = 3
+attack = 2
+health = 3
+description = "On death: Deal 2 damage to a random enemy."
+replace_effects = true
+effects = Array[Resource]([SubResource("DeathRandom2_boh")])
+
+[resource]
+script = ExtResource("1_data")
+title = "BOH"
+description = "On death: Deal 1 damage to a random enemy."
+art = ExtResource("2_art")
+art_offset = Vector2(0, 3)
+tags = Array[StringName]([&"spider"])
+attack = 1
+health = 1
+cooldown = 1
+effects = Array[Resource]([SubResource("DeathRandom1_boh")])
+tier_overrides = Array[Resource]([SubResource("Tier2_boh"), SubResource("Tier3_boh")])

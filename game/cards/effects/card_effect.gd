@@ -29,10 +29,28 @@ func apply_after_attacked(
 	pass
 
 
+func apply_after_kill(
+	_source: BattleCardState,
+	_defeated_target: BattleCardState,
+	_cards: Array[BattleCardState],
+	_events: Array[BattleEvent]
+) -> void:
+	pass
+
+
 func apply_on_death(
 	_source: BattleCardState,
 	_cards: Array[BattleCardState],
 	_events: Array[BattleEvent]
+) -> void:
+	pass
+
+
+func apply_on_death_with_rng(
+	_source: BattleCardState,
+	_cards: Array[BattleCardState],
+	_events: Array[BattleEvent],
+	_rng: RandomNumberGenerator
 ) -> void:
 	pass
 

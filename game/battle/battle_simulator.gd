@@ -128,6 +128,11 @@ func _resolve_attack(attacker: BattleCardState, cards: Array[BattleCardState], e
 		return
 	var target := _find_target(attacker, cards)
 	if not target:
+		attacker.cooldown = maxi(1, attacker.data.cooldown)
+		BattleEvent.add(events, BattleEvent.COOLDOWN_RESET, {
+			"card_id": attacker.card_id,
+			"cooldown": attacker.cooldown,
+		})
 		return
 	attacker.attacks_made += 1
 	_apply_before_attack_effects(attacker, target, cards, events)
@@ -168,6 +173,11 @@ func _resolve_attack(attacker: BattleCardState, cards: Array[BattleCardState], e
 	})
 	_apply_death_prevention(target, events)
 	_apply_death_prevention_for_hits(extra_hits, cards, events)
+	var target_killed_by_attack := not target.is_alive()
+	if not _combat_active(cards):
+		if target_killed_by_attack:
+			_resolve_dead_card(target, cards, events)
+		return
 	_apply_return_attack_damage(target, attacker, cards, events)
 	if target.is_alive():
 		_apply_after_attacked_effects(attacker, target, damage, cards, events)
@@ -193,6 +203,8 @@ func _resolve_attack(attacker: BattleCardState, cards: Array[BattleCardState], e
 				"effect_color": overflow_trait.definition.get_trigger_color_hex(),
 			})
 		_apply_overflow_damage(attacker, target, overflow_damage, cards, events)
+	if target_killed_by_attack:
+		_apply_after_kill_effects(attacker, target, cards, events)
 	if target.is_alive() and triggering_poison > 0 and target.poison > 0:
 		var poison_damage := mini(triggering_poison, target.poison)
 		target.health -= poison_damage
@@ -240,8 +252,9 @@ func _apply_adjacent_attack_damage(
 		var adjacent := _find_living_card_at(cards, target.team, target.slot_index + slot_offset)
 		if not adjacent:
 			continue
-		adjacent.health -= amount
-		hits.append(BattleEffectHit.new(adjacent.card_id, amount, adjacent.health))
+		var reduced_amount := adjacent.modify_incoming_attack_damage(amount)
+		adjacent.health -= reduced_amount
+		hits.append(BattleEffectHit.new(adjacent.card_id, reduced_amount, adjacent.health))
 	return hits
 
 
@@ -308,8 +321,9 @@ func _resolve_dead_card(
 	if card.is_alive() or card.death_resolved:
 		return
 	card.death_resolved = true
-	_apply_on_death_effects(card, cards, events)
-	_resolve_pending_deaths(cards, events)
+	if _combat_active(cards):
+		_apply_on_death_effects(card, cards, events)
+		_resolve_pending_deaths(cards, events)
 	BattleEvent.add(events, BattleEvent.CARD_DIED, {"card_id": card.card_id})
 
 
@@ -430,8 +444,14 @@ func _find_execute_target(
 	threshold: int
 ) -> BattleCardState:
 	var target: BattleCardState = null
+	var source_attack := source.get_total_attack()
 	for card in cards:
-		if card.team == source.team or not card.is_alive() or card.health > threshold:
+		if (
+			card.team == source.team
+			or not card.is_alive()
+			or not card.can_be_attacked_by(source_attack)
+			or card.health > threshold
+		):
 			continue
 		if (
 			target == null
@@ -482,21 +502,43 @@ func _apply_after_attacked_effects(
 			effect.apply_after_attacked(source, target, damage, cards, events)
 
 
+func _apply_after_kill_effects(
+	source: BattleCardState,
+	defeated_target: BattleCardState,
+	cards: Array[BattleCardState],
+	events: Array[BattleEvent]
+) -> void:
+	if not source.is_alive() or not _combat_active(cards):
+		return
+	for effect_resource in source.get_effects():
+		var effect := effect_resource as CardEffect
+		if effect:
+			effect.apply_after_kill(source, defeated_target, cards, events)
+
+
 func _apply_on_death_effects(
 	source: BattleCardState,
 	cards: Array[BattleCardState],
 	events: Array[BattleEvent]
 ) -> void:
+	if not _combat_active(cards):
+		return
 	for effect_resource in source.get_effects():
 		var effect := effect_resource as CardEffect
 		if effect:
 			effect.apply_on_death(source, cards, events)
+			effect.apply_on_death_with_rng(source, cards, events, _rng)
+
+
+func _combat_active(cards: Array[BattleCardState]) -> bool:
+	return _team_alive(cards, TEAM_PLAYER) and _team_alive(cards, TEAM_ENEMY)
 
 
 func _find_target(attacker: BattleCardState, cards: Array[BattleCardState]) -> BattleCardState:
 	var enemies: Array[BattleCardState] = []
+	var attacker_attack := attacker.get_total_attack()
 	for card in cards:
-		if card.team != attacker.team and card.is_alive():
+		if card.team != attacker.team and card.is_alive() and card.can_be_attacked_by(attacker_attack):
 			enemies.append(card)
 	if attacker.uses_lowest_health_target():
 		return _find_lowest_health_enemy(enemies)

@@ -1,0 +1,46 @@
+[gd_resource type="Resource" script_class="CardData" format=3 uid="uid://d3np4joalypr0"]
+
+[ext_resource type="Script" uid="uid://dsht6jxxa5f8m" path="res://game/cards/card_data.gd" id="1_data"]
+[ext_resource type="Texture2D" uid="uid://bij5tdw2qp81e" path="res://assets/art/cards/ivy.png" id="2_art"]
+[ext_resource type="Script" uid="uid://b551vbw3ovtvi" path="res://game/cards/traits/poison_trait.gd" id="3_poison"]
+[ext_resource type="Script" uid="uid://d1r61yltbgby4" path="res://game/cards/effects/death_enemy_team_poison_effect.gd" id="4_death_poison"]
+[ext_resource type="Script" uid="uid://buc18u4ppgb8o" path="res://game/cards/card_tier_override.gd" id="5_tier"]
+
+[sub_resource type="Resource" id="DeathPoison_ivy"]
+script = ExtResource("4_death_poison")
+
+[sub_resource type="Resource" id="Tier2_ivy"]
+script = ExtResource("5_tier")
+attack = 2
+health = 4
+
+[sub_resource type="Resource" id="DeathPoison2_ivy"]
+script = ExtResource("4_death_poison")
+amount = 2
+
+[sub_resource type="Resource" id="Tier3_ivy"]
+script = ExtResource("5_tier")
+tier = 3
+attack = 3
+health = 6
+description = "On death: Add +2 Poison to all enemies."
+replace_effects = true
+effects = Array[Resource]([SubResource("DeathPoison2_ivy")])
+
+[sub_resource type="Resource" id="Poison_ivy"]
+script = ExtResource("3_poison")
+
+[resource]
+script = ExtResource("1_data")
+title = "IVY"
+description = "On death: Add +1 Poison to all enemies."
+art = ExtResource("2_art")
+art_scale = 1.5
+rarity = 1
+tags = Array[StringName]([&"spider"])
+attack = 1
+health = 3
+cooldown = 2
+effects = Array[Resource]([SubResource("DeathPoison_ivy")])
+traits = Array[Resource]([SubResource("Poison_ivy")])
+tier_overrides = Array[Resource]([SubResource("Tier2_ivy"), SubResource("Tier3_ivy")])

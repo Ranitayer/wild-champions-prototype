@@ -17,27 +17,32 @@ func set_seed(shop_seed: int) -> void:
 	generator.seed = random_seed
 
 
+func reset_pity() -> void:
+	_pity_misses_by_pack.clear()
+
+
 func pick_booster_rewards(data: BoosterPackData, count: int) -> Array[CardData]:
 	if not data:
 		return []
 	var pack_key := data.get_pack_key()
-	var pity_misses := int(_pity_misses_by_pack.get(pack_key, 0))
+	var pity_misses: Variant = _pity_misses_by_pack.get(pack_key, {})
 	var rewards: Array[CardData] = data.pick_rewards(count, generator, pity_misses)
 	record_booster_result(data, rewards)
 	return rewards
 
 
-func get_booster_pity_misses(data: BoosterPackData) -> int:
+func get_booster_pity_misses(data: BoosterPackData) -> Dictionary:
 	if not data:
-		return 0
-	return int(_pity_misses_by_pack.get(data.get_pack_key(), 0))
+		return {}
+	var pity_misses: Dictionary = _pity_misses_by_pack.get(data.get_pack_key(), {})
+	return pity_misses
 
 
 func record_booster_result(data: BoosterPackData, rewards: Array[CardData]) -> void:
 	if not data:
 		return
 	var pack_key := data.get_pack_key()
-	if data.has_high_rarity(rewards):
-		_pity_misses_by_pack[pack_key] = 0
-	else:
-		_pity_misses_by_pack[pack_key] = int(_pity_misses_by_pack.get(pack_key, 0)) + 1
+	_pity_misses_by_pack[pack_key] = data.get_updated_pity_misses(
+		_pity_misses_by_pack.get(pack_key, {}),
+		rewards
+	)

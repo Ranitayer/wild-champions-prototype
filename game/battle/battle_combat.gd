@@ -104,8 +104,12 @@ func _play_event(event: BattleEvent) -> void:
 			combat_started.emit()
 		BattleEvent.TICK:
 			await _play_tick(event)
+		BattleEvent.COOLDOWN_RESET:
+			_play_cooldown_reset(event)
 		BattleEvent.BUFF_APPLIED:
 			await _play_buff(event)
+		BattleEvent.TRAIT_APPLIED:
+			await _play_trait_applied(event)
 		BattleEvent.TEMPORARY_ATTACK_APPLIED:
 			await _play_temporary_attack(event)
 		BattleEvent.BEFORE_ATTACK:
@@ -124,6 +128,8 @@ func _play_event(event: BattleEvent) -> void:
 			await _play_heal(event)
 		BattleEvent.POISON_APPLIED:
 			await _play_poison_applied(event)
+		BattleEvent.POISON_GROUP_APPLIED:
+			await _play_poison_group_applied(event)
 		BattleEvent.POISON_DAMAGE:
 			await _play_poison_damage(event)
 		BattleEvent.DEATH_PREVENTED:
@@ -139,6 +145,12 @@ func _play_tick(event: BattleEvent) -> void:
 		var binding := _get_binding(int(card_id))
 		if binding:
 			binding.visual.set_cooldown_value(int(cooldowns[card_id]), false)
+
+
+func _play_cooldown_reset(event: BattleEvent) -> void:
+	var binding := _get_binding(event.get_int("card_id"))
+	if binding:
+		binding.visual.set_cooldown_value(event.get_int("cooldown"), false)
 
 
 func _play_buff(event: BattleEvent) -> void:
@@ -158,6 +170,25 @@ func _play_buff(event: BattleEvent) -> void:
 	else:
 		target.visual.set_attack_value(event.get_int("result"))
 	buff_applied.emit(source_id, target_id, stat, amount)
+	await _wait_for_effect_time(effect_start_ms)
+
+
+func _play_trait_applied(event: BattleEvent) -> void:
+	var effect_start_ms := Time.get_ticks_msec()
+	var target := _get_binding(event.get_int("target_id"))
+	if not target:
+		return
+	target.visual.set_runtime_trait(
+		event.get_string("trait_id"),
+		event.get_string("trait_display_text", event.get_string("trait_name", "Trait")),
+		event.get_string("trait_description"),
+		event.get_color("effect_color", Color("de9e41"))
+	)
+	effect_popup.show_text(
+		target.visual,
+		"%s +%d" % [event.get_string("trait_name", "Trait"), event.get_int("amount")],
+		event.get_color("effect_color", Color("de9e41"))
+	)
 	await _wait_for_effect_time(effect_start_ms)
 
 
@@ -212,6 +243,33 @@ func _play_poison_applied(event: BattleEvent) -> void:
 	await buff_effect.play(source.visual, target.visual, CardStat.Type.POISON, amount)
 	target.visual.set_poison_value(result)
 	poison_applied.emit(source_id, target_id, amount, result)
+	await _wait_for_effect_time(effect_start_ms)
+
+
+func _play_poison_group_applied(event: BattleEvent) -> void:
+	var effect_start_ms := Time.get_ticks_msec()
+	var source_id := event.get_int("source_id")
+	var source := _get_binding(source_id)
+	if not source:
+		return
+	var hit_tweens: Array[Tween] = []
+	var results: Dictionary = event.get_dictionary("results")
+	var flash_color := event.get_color("flash_color", Color("b0e535"))
+	var source_center: Vector2 = source.visual.get_card_center()
+	for target_id in results:
+		var target := _get_binding(int(target_id))
+		if not target:
+			continue
+		effect_popup.show_text(target.visual, "Poisoned", CardStat.POISON_FEEDBACK_COLOR)
+		target.visual.set_poison_value(int(results[target_id]))
+		poison_applied.emit(source_id, int(target_id), event.get_int("amount"), int(results[target_id]))
+		hit_tweens.append(target.visual.start_hit_animation(source_center, flash_color))
+	if not hit_tweens.is_empty():
+		var first_hit_tween: Tween = hit_tweens[0]
+		if first_hit_tween and first_hit_tween.is_running():
+			await first_hit_tween.finished
+	if bool(event.get_value("source_dies_after_effect", false)):
+		await source.visual.play_death_animation(_get_death_fly_direction(source))
 	await _wait_for_effect_time(effect_start_ms)
 
 
@@ -321,7 +379,11 @@ func _play_damage(event: BattleEvent) -> void:
 		extra_target.visual.set_health_value(hit.target_health)
 		damage_applied.emit(hit.target_id, hit.damage, hit.target_health)
 		effect_damage_applied.emit(attacker_id, hit.target_id, hit.damage, hit.target_health)
-		extra_hit_tweens.append(extra_target.visual.start_hit_animation(hit_origin, flash_color))
+		if hit.damage <= 0:
+			effect_popup.show_text(extra_target.visual, "Block")
+			await block_effect.play(extra_target.visual)
+		else:
+			extra_hit_tweens.append(extra_target.visual.start_hit_animation(hit_origin, flash_color))
 	if damage <= 0:
 		effect_popup.show_text(target.visual, "Block")
 		await block_effect.play(target.visual)
@@ -351,8 +413,6 @@ func _play_effect_damage_group(event: BattleEvent) -> void:
 	var hits: Array = event.get_array("hits")
 	var flash_color := event.get_color("flash_color", CardVisual.ORANGE_COLOR)
 	var source_center: Vector2 = source.visual.get_card_center()
-	if not event.get_string("effect_name").is_empty():
-		effect_popup.show_text(source.visual, event.get_string("effect_name"), event.get_color("effect_color", flash_color))
 	for hit_value in hits:
 		var hit: BattleEffectHit = hit_value as BattleEffectHit
 		if not hit:
@@ -361,6 +421,8 @@ func _play_effect_damage_group(event: BattleEvent) -> void:
 		var target := _get_binding(target_id)
 		if not target:
 			continue
+		if not event.get_string("effect_name").is_empty():
+			effect_popup.show_text(target.visual, event.get_string("effect_name"), event.get_color("effect_color", flash_color))
 		var damage := hit.damage
 		var remaining_health := hit.target_health
 		target.visual.set_health_value(remaining_health)

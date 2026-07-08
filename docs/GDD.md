@@ -36,12 +36,14 @@ The exact deck-building, matchmaking, rewards, and progression rules are not yet
 - The prototype scoreboard stays visible during shop and battle, showing each player's round wins.
 - After each battle round, a winner popup resolves into a score marker for the winning player before the next shop phase.
 - When a match winner is declared, the final winner popup locks card and shop interaction until the player chooses Restart or Quit.
+- In online play, Restart waits until both players choose Restart. Quit is synchronized immediately.
 
 ## Battle
 
 - Combat resolves automatically after player preparation.
 - The initial arena has four card slots per side in a 4v4 formation, with support for larger formations.
-- Pressing Space starts the prototype battle.
+- Battle starts when both players submit ready board snapshots.
+- A player can cancel Ready before battle starts to keep editing their shop board.
 - Cards count down their cooldowns. When a cooldown reaches 0, that card attacks and its cooldown resets.
 - If multiple cards become ready at the same time, attacks resolve one at a time from left to right.
 - At battle start, an initiative roll chooses which player is favored for same-cooldown attack order.
@@ -97,6 +99,7 @@ To define:
 - The Wilder Booster Pack costs 10 and grants one card with no Common results.
 - The shop also offers one individual card priced by rarity: Common 3, Uncommon 8, Rare 12, Epic 25, and Mythic 40.
 - Shop rewards use a seeded random sequence so the same seed and card catalog reproduce the same rolls.
+- Booster soft pity tracks Rare, Epic, and Mythic misses separately. Mythic pity resets only when Mythic appears.
 - Booster rewards are rolled and validated before payment. Payment completes before the pack or card acquisition animation begins.
 - Opening a booster closes and locks the card collection until the player takes a reward.
 - In shop, owned cards show sell value and can be sold by dragging them into the sell slot.
@@ -149,8 +152,10 @@ The first playable target should prove one complete loop: configure a legal setu
 ## Change Log
 
 - 2026-07-08: Added best-of-15 match scoring direction with first-to-8 win target and visible round scoreboard.
+- 2026-07-08: Split booster soft pity by rarity so Mythic pity no longer resets from Rare or Epic pulls.
 - 2026-07-08: Added final match winner popup behavior that locks card and shop interaction until Restart or Quit.
 - 2026-07-08: Clarified battle winner popup score-marker flow into the match scoreboard.
+- 2026-07-08: Synchronized online Restart as a both-player confirmation and allowed Ready cancel before combat starts.
 - 2026-07-07: Added Matriarch and Predator lowest-health targeting.
 - 2026-07-07: Added card tags and title-box tag icons.
 - 2026-07-06: Set prototype match economy to 10 starting currency, +5 for winner, and +8 for loser.

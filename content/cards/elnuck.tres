@@ -12,7 +12,7 @@ script = ExtResource("5_effect")
 [sub_resource type="Resource" id="Tier2_elnuck"]
 script = ExtResource("4_tier")
 attack = 2
-health = 8
+health = 6
 
 [sub_resource type="Resource" id="AfterAttackedAttackBuff2_elnuck"]
 script = ExtResource("5_effect")
@@ -25,7 +25,7 @@ script = ExtResource("3_tough")
 script = ExtResource("4_tier")
 tier = 3
 attack = 2
-health = 10
+health = 8
 description = "After being attacked, gain +2 Attack."
 replace_effects = true
 effects = Array[Resource]([SubResource("AfterAttackedAttackBuff2_elnuck")])
@@ -45,7 +45,7 @@ art_offset = Vector2(0, 8)
 rarity = 1
 tags = Array[StringName]([&"animal"])
 attack = 1
-health = 6
+health = 4
 cooldown = 2
 effects = Array[Resource]([SubResource("AfterAttackedAttackBuff1_elnuck")])
 traits = Array[Resource]([SubResource("Tough1_elnuck")])

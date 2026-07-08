@@ -31,6 +31,23 @@ func _ready() -> void:
 	_build_ui()
 
 
+func show_result(
+	result: MatchResult,
+	target_position: Vector2 = Vector2.ZERO,
+	has_target: bool = false,
+	arrived_callback: Callable = Callable()
+) -> void:
+	if result == null or not result.has_winner():
+		return
+	await show_winner(
+		result.winner_name,
+		result.is_local_winner,
+		target_position,
+		has_target,
+		arrived_callback
+	)
+
+
 func show_winner(
 	player_name: String,
 	is_local: bool = true,

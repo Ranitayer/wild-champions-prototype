@@ -13,9 +13,14 @@
 [ext_resource type="Resource" uid="uid://di3cir6buovhs" path="res://content/cards/shpark.tres" id="12_shpark"]
 [ext_resource type="Resource" uid="uid://chq2yoen6wbvb" path="res://content/cards/thorns.tres" id="13_thorns"]
 [ext_resource type="Resource" uid="uid://b0qugqo65ae7x" path="res://content/cards/rando.tres" id="14_rando"]
-[ext_resource type="Resource" path="res://content/cards/dexter.tres" id="15_dexter"]
-[ext_resource type="Resource" path="res://content/cards/creg.tres" id="16_creg"]
+[ext_resource type="Resource" uid="uid://b5hg6e53u4csi" path="res://content/cards/dexter.tres" id="15_dexter"]
+[ext_resource type="Resource" uid="uid://bhruh3wa1qujl" path="res://content/cards/creg.tres" id="16_creg"]
+[ext_resource type="Resource" uid="uid://d3np4joalypr0" path="res://content/cards/ivy.tres" id="17_ivy"]
+[ext_resource type="Resource" uid="uid://gy86st0vsstk" path="res://content/cards/scar.tres" id="18_scar"]
+[ext_resource type="Resource" uid="uid://dbysd3h3iouxf" path="res://content/cards/mena.tres" id="19_mena"]
+[ext_resource type="Resource" uid="uid://cftmn4nlaxp1y" path="res://content/cards/boh.tres" id="20_boh"]
+[ext_resource type="Resource" path="res://content/cards/kali.tres" id="21_kali"]
 
 [resource]
 script = ExtResource("1_catalog")
-cards = Array[Resource]([ExtResource("3_stageroo"), ExtResource("4_badger"), ExtResource("5_warwick"), ExtResource("6_peedie"), ExtResource("7_seraphina"), ExtResource("8_batteroo"), ExtResource("9_nimble"), ExtResource("10_matriarch"), ExtResource("11_elnuck"), ExtResource("12_shpark"), ExtResource("13_thorns"), ExtResource("14_rando"), ExtResource("15_dexter"), ExtResource("16_creg")])
+cards = Array[Resource]([ExtResource("3_stageroo"), ExtResource("4_badger"), ExtResource("5_warwick"), ExtResource("6_peedie"), ExtResource("7_seraphina"), ExtResource("8_batteroo"), ExtResource("9_nimble"), ExtResource("10_matriarch"), ExtResource("11_elnuck"), ExtResource("12_shpark"), ExtResource("13_thorns"), ExtResource("14_rando"), ExtResource("15_dexter"), ExtResource("16_creg"), ExtResource("17_ivy"), ExtResource("18_scar"), ExtResource("19_mena"), ExtResource("20_boh"), ExtResource("21_kali")])

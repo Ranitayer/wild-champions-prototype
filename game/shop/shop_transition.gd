@@ -58,6 +58,12 @@ func set_shop_active(active: bool) -> void:
 	await _transition_to(active)
 
 
+func refresh_shop_products() -> void:
+	if _transitioning or not _in_shop:
+		return
+	await _set_shop_products_visible(true)
+
+
 func _transition_to(shop_active: bool) -> void:
 	_capture_battle_positions()
 	_transitioning = true

@@ -45,7 +45,6 @@ var _panel_animating := false
 var _reorganize_revision := 0
 var _button_tween: Tween
 var _reorganize_tween: Tween
-var _button_style: StyleBoxFlat
 var _choice_locked := false
 
 
@@ -76,9 +75,7 @@ func _layout_panel() -> void:
 
 
 func _configure_button() -> void:
-	_button_style = cards_button.get_theme_stylebox("normal").duplicate() as StyleBoxFlat
-	for state in ["normal", "hover", "pressed"]:
-		cards_button.add_theme_stylebox_override(state, _button_style)
+	UIButtonStyle.apply_plain_button(cards_button, 24, LIGHT_COLOR, DARK_COLOR)
 	cards_button.mouse_entered.connect(_animate_button_hover.bind(true))
 	cards_button.mouse_exited.connect(_animate_button_hover.bind(false))
 	_set_button_active(false)
@@ -98,10 +95,8 @@ func _animate_button_hover(hovered: bool) -> void:
 
 
 func _set_button_active(active: bool) -> void:
-	_button_style.bg_color = DARK_COLOR if active else LIGHT_COLOR
-	var text_color := LIGHT_COLOR if active else DARK_COLOR
-	for state in ["font_color", "font_hover_color", "font_pressed_color"]:
-		cards_button.add_theme_color_override(state, text_color)
+	var text_color: Color = LIGHT_COLOR if active else DARK_COLOR
+	UIButtonStyle.set_button_colors(cards_button, DARK_COLOR if active else LIGHT_COLOR, text_color)
 
 
 func _on_node_added(node: Node) -> void:
@@ -147,6 +142,26 @@ func set_choice_locked(locked: bool) -> void:
 		await get_tree().process_frame
 	if locked and cards_panel.visible:
 		await _close_panel()
+
+
+func reset_collection() -> void:
+	_cancel_reorganization()
+	for child in interface.get_children():
+		var card := child as CardVisual
+		if card and _active_drags.has(card.get_instance_id()):
+			card.queue_free()
+	_entries.clear()
+	_active_drags.clear()
+	_pending_merges.clear()
+	_collecting_card_ids.clear()
+	_next_entry_id = 1
+	for child in cards_grid.get_children():
+		child.queue_free()
+	cards_panel.hide()
+	_panel_animating = false
+	_choice_locked = false
+	cards_button.disabled = false
+	_set_button_active(false)
 
 
 func _return_to_ghost(card: CardVisual, active_drag: CardCollectionDragState) -> void:
